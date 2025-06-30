@@ -13,7 +13,7 @@ class GUI:
         self.resizeID = None
 
         self.palette = ["#FA3232", "#3232FA", "#32FA32", "#32FAFA", "#FA32FA", "#AA3232", "#3232AA", "#32AA32", "#32AAAA", "#AA32AA", "#FA8800", "#00FA88", "#8800FA", "#FA8888", "#8888FA", "#88FA88", "#FA3288", "#3288FA", "#88FA32", "#AA66AA", "#66AAAA", "#3ED06E", "#6E3ED0", "#D06E3E", "#000000"]
-        self.colors = {"default": self.palette[0], "influencer": self.palette[1]}
+        self.colors = {"default": self.palette[0], "influencer": self.palette[1], "influenced": self.palette[2]}
 
         # Set the default strings for interface at simulation start
         self.defaultAgentString = "Agent: - | Age: -"
@@ -144,18 +144,16 @@ class GUI:
     def configureGraph(self):
         i = 1
         j = 1
-        print(f"Width: {self.siteWidth}\tHeight: {self.siteHeight}")
         for agent in self.trendemic.agents:
             fillColor = self.lookupFillColor(agent)
             x1 = i * self.siteWidth
             y1 = j * self.siteHeight
             x2 = x1 + self.siteWidth
             y2 = y1 + self.siteHeight
-            print(f"({x1},{y1})->({x2},{y2})")
             if self.activeNetwork.get() != "None":
-                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y1, fill=self.colors["default"], outline=""), "agent": agent, "color": fillColor}
+                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y1, fill=fillColor, outline=""), "agent": agent, "color": fillColor}
             else:
-                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=self.colors["default"], outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
+                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
         if self.activeNetwork.get() != "None":
@@ -523,9 +521,11 @@ class GUI:
             return self.lookupNetworkColor(cell)
         
         if agent == None:
-            return self.palette[2]
+            return "black"
         elif agent.influencer:
             return self.colors["influencer"]
+        elif agent.influenced:
+            return self.colors["influenced"]
         return self.colors["default"]
 
     def lookupNetworkColor(self, cell):

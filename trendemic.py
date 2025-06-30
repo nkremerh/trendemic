@@ -21,6 +21,7 @@ class Trendemic:
         self.seed = configuration["seed"]
         self.debug = configuration["debugMode"]
         self.keepAlive = configuration["keepAlivePostExtinction"]
+        self.networkType = configuration["networkType"]
         self.agentEndowmentIndex = 0
         self.agentEndowments = []
         
@@ -72,6 +73,7 @@ class Trendemic:
                 else:
                     neighbors.append(neighbor)
             a.neighbors = neighbors
+            a.localNeighbors = neighbors
 
     def doTimestep(self):
         if self.timestep >= self.maxTimestep:
@@ -114,6 +116,8 @@ class Trendemic:
     def endSimulation(self):
         self.endLog()
         if "all" in self.debug or "trendemic" in self.debug:
+            for agent in self.agents:
+                print(agent)
             print(str(self))
         exit(0)
 
@@ -131,9 +135,13 @@ class Trendemic:
 
     def randomizeAgentEndowments(self, numAgents):
         configs = self.configuration
-        #aggressionFactor = configs["agentAggressionFactor"]
-        testAttribute = [0, 3]
-        configurations = {"testAttribute": {"endowments": [], "curr": testAttribute[0], "min": testAttribute[0], "max": testAttribute[1]},
+        behaviorModels = configs["agentBehaviorModels"]
+        globalWeight = configs["agentGlobalWeight"]
+        localWeight = configs["agentLocalWeight"]
+        threshold = configs["agentThreshold"]
+        configurations = {"globalWeight": {"endowments": [], "curr": globalWeight[0], "min": globalWeight[0], "max": globalWeight[1]},
+                          "localWeight": {"endowments": [], "curr": localWeight[0], "min": localWeight[0], "max": localWeight[1]},
+                          "threshold": {"endowments": [], "curr": threshold[0], "min": threshold[0], "max": threshold[1]}
                           }
 
         if self.agentConfigHashes == None:
@@ -162,8 +170,9 @@ class Trendemic:
             configurations[config]["inc"] = increment
             configurations[config]["decimals"] = decimals
 
-        endowments = []
-
+        numInfluencers = configs["numInfluencers"]
+        behaviorModels = []
+        influencers = []
         for i in range(numAgents):
             for config in configurations.values():
                 config["endowments"].append(config["curr"])
@@ -171,15 +180,26 @@ class Trendemic:
                 config["curr"] = round(config["curr"], config["decimals"])
                 if config["curr"] > config["max"]:
                     config["curr"] = config["min"]
+            behaviorModel = configs["agentBehaviorModels"][i % len(configs["agentBehaviorModels"])]
+            behaviorModels.append(behaviorModel)
+            if numInfluencers > 0:
+                influencers.append(True)
+                numInfluencers -= 1
+            else:
+                influencers.append(False)
 
+        endowments = []
         # Keep state of random numbers to allow extending agent endowments without altering original random object state
         randomNumberReset = random.getstate()
         for config in configurations:
             random.seed(self.agentConfigHashes[config] + self.timestep)
             random.shuffle(configurations[config]["endowments"])
         random.setstate(randomNumberReset)
+        random.shuffle(behaviorModels)
+        random.shuffle(influencers)
+
         for i in range(numAgents):
-            agentEndowment = {"seed": self.seed
+            agentEndowment = {"seed": self.seed, "behaviorModel": behaviorModels.pop(), "influencer": influencers.pop()
                               }
             for config in configurations:
                 agentEndowment[config] = configurations[config]["endowments"].pop()
@@ -425,7 +445,11 @@ def verifyConfiguration(configuration):
 
 if __name__ == "__main__":
     # Set default values for simulation configuration
-    configuration = {"debugMode": ["none"],
+    configuration = {"agentBehaviorModels": ["inky"],
+                     "agentGlobalWeight": [0.0, 0.0],
+                     "agentLocalWeight": [1.0, 1.0],
+                     "agentThreshold": [0.2, 0.2],
+                     "debugMode": ["none"],
                      "experimentalGroup": None,
                      "headlessMode": True,
                      "interfaceHeight": 1000,
@@ -434,14 +458,15 @@ if __name__ == "__main__":
                      "keepAlivePostExtinction": False,
                      "logfile": None,
                      "logfileFormat": "json",
-                     "numAgents": 8,
+                     "networkType": "local",
+                     "numAgents": 10,
+                     "numInfluencers": 1,
                      "profileMode": False,
                      "screenshots": False,
                      "seed": -1,
                      "threshold": 0.2,
                      "timesteps": 200
                      }
-    N = 10
     k = 2
     p = 3
     m = 4
@@ -454,31 +479,21 @@ if __name__ == "__main__":
     num_trials = 10
     tipping_fraction = 0.75
 
-    local_weight = 1.0
-    global_weight = 0.0
-    heterogeneous_thresholds = False
     threshold_distribution = "uniform"
     threshold_mean = 0.2
     threshold_std = 0.05
     sweep_enabled = True
     evaluation_mode = "tipping_threshold"
  
-    moreConfigs = {"N": N,
-                   "network_type": network_type,
-                   "threshold": 0.2,
-                   "initial_influencers_fraction": initial_influencers_fraction,
+    moreConfigs = {"initial_influencers_fraction": initial_influencers_fraction,
                    "k": k,
                    "p": p,
                    "m": m,
-                   "local_weight": local_weight,
-                   "global_weight": global_weight,
-                   "heterogeneous_thresholds": heterogeneous_thresholds,
                    "threshold_distribution": threshold_distribution,
                    "threshold_mean": threshold_mean,
                    "threshold_std": threshold_std,
                    "social_engineer_enabled": False,
                    "seeding_strategy": None,
-                   "social_engineer_count": 5
                    }
 
     configuration = parseOptions(configuration)
