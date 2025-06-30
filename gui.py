@@ -156,8 +156,7 @@ class GUI:
                 self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
-        if self.activeNetwork.get() != "None":
-            self.drawLines()
+        self.drawEdges()
 
         if self.highlightedCell != None:
             self.highlightCell(self.highlightedCell)
@@ -364,71 +363,18 @@ class GUI:
         self.window.destroy()
         self.trendemic.toggleEnd()
 
-    def drawLines(self):
-        lineCoordinates = set()
-        if self.activeNetwork.get() == "Neighbors":
-            for agent in self.trendemic.agents:
-                for neighbor in agent.neighbors:
-                    if neighbor != None and neighbor.isAlive() == True:
-                        lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (neighbor.cell.x, neighbor.cell.y)])
-                        lineCoordinates.add(lineEndpointsPair)
-
-        elif self.activeNetwork.get() == "Family":
-            for agent in self.trendemic.agents:
-                family = [agent.socialNetwork["mother"], agent.socialNetwork["father"]] + agent.socialNetwork["children"]
-                for familyMember in family:
-                    if familyMember != None and familyMember.isAlive() == True:
-                        lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (familyMember.cell.x, familyMember.cell.y)])
-                        lineCoordinates.add(lineEndpointsPair)
-
-        elif self.activeNetwork.get() == "Friends":
-            for agent in self.trendemic.agents:
-                for friendRecord in agent.socialNetwork["friends"]:
-                    friend = friendRecord["friend"]
-                    if friend.isAlive() == True:
-                        lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (friend.cell.x, friend.cell.y)])
-                        lineCoordinates.add(lineEndpointsPair)
-
-        elif self.activeNetwork.get() == "Trade":
-            for agent in self.trendemic.agents:
-                for label in agent.socialNetwork:
-                    if isinstance(label, str):
-                        continue
-                    trader = agent.socialNetwork[label]
-                    if trader != None and trader["agent"].isAlive() == True and trader["lastSeen"] == self.trendemic.timestep and trader["timesTraded"] > 0:
-                        trader = trader["agent"]
-                        lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (trader.cell.x, trader.cell.y)])
-                        lineCoordinates.add(lineEndpointsPair)
-
-        elif self.activeNetwork.get() == "Loans":
-            for agent in self.trendemic.agents:
-                # Loan records are always kept on both sides, so only one side is needed
-                for loanRecord in agent.socialNetwork["creditors"]:
-                    creditor = agent.socialNetwork[loanRecord["creditor"]]["agent"]
-                    if creditor.isAlive() == True:
-                        lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (creditor.cell.x, creditor.cell.y)])
-                        lineCoordinates.add(lineEndpointsPair)
-
-        elif self.activeNetwork.get() == "Disease":
-            for agent in self.trendemic.agents:
-                if agent.isSick() == True:
-                    for diseaseRecord in agent.diseases:
-                        # Starting diseases without an infector are not considered
-                        if "infector" not in diseaseRecord:
-                            continue
-                        infector = diseaseRecord["infector"]
-                        if infector != None and infector.isAlive() == True:
-                            lineEndpointsPair = frozenset([(agent.cell.x, agent.cell.y), (infector.cell.x, infector.cell.y)])
-                            lineCoordinates.add(lineEndpointsPair)
-
-        for lineEndpointsPair in lineCoordinates:
-            coordList = list(lineEndpointsPair)
-            (x1, y1), (x2, y2) = coordList[0], coordList[1]
-            x1 = (x1 + 0.5) * self.siteWidth + self.borderEdge
-            y1 = (y1 + 0.5) * self.siteHeight + self.borderEdge
-            x2 = (x2 + 0.5) * self.siteWidth + self.borderEdge
-            y2 = (y2 + 0.5) * self.siteHeight + self.borderEdge
-            self.canvas.create_line(x1, y1, x2, y2, fill="black", width="2", tag="line")
+    def drawEdges(self):
+        for agent in self.trendemic.agents:
+            agentNode = self.graph[agent.ID]["object"]
+            agentMidpoint = self.findMidpoint(agentNode)
+            agentX = agentMidpoint[0]
+            agentY = agentMidpoint[1]
+            for n in range(len(agent.neighbors)):
+                neighborNode = self.graph[n]["object"]
+                neighborMidpoint = self.findMidpoint(neighborNode)
+                neighborX = neighborMidpoint[0]
+                neighborY = neighborMidpoint[1]
+                self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
 
     def findClickedCell(self, event):
         # Account for padding in GUI cells
@@ -463,27 +409,15 @@ class GUI:
 
         return colorRange
 
-    def findSugarAndSpiceColors(self, sugarColor, spiceColor):
-        sugarRGB = self.hexToInt(sugarColor)
-        spiceRGB = self.hexToInt(spiceColor)
-        sugarAndSpiceRGB = self.interpolateColor(sugarRGB, spiceRGB, 0.5)
-        whiteRGB = [255, 255, 255]
-
-        maxSugar = self.trendemic.configuration["environmentMaxSugar"]
-        maxSpice = self.trendemic.configuration["environmentMaxSpice"]
-        colorRange = [[None for spice in range(maxSpice + 1)] for sugar in range(maxSugar + 1)]
-
-        for sugar in range(maxSugar + 1):
-            sugarFactor = sugar / maxSugar if maxSugar > 0 else 0
-            for spice in range(maxSpice + 1):
-                spiceFactor = spice / maxSpice if maxSpice > 0 else 0
-
-                top = self.interpolateColor(whiteRGB, spiceRGB, spiceFactor)
-                bottom = self.interpolateColor(sugarRGB, sugarAndSpiceRGB, spiceFactor)
-                finalRGB = self.interpolateColor(top, bottom, sugarFactor)
-                colorRange[sugar][spice] = self.intToHex(finalRGB)
-
-        return colorRange
+    def findMidpoint(self, canvasObject):
+        coords = self.canvas.coords(canvasObject)
+        height = coords[1] - coords[3]
+        width = coords[2] - coords[0]
+        x = coords[0]
+        y = coords[1]
+        midpointX = x + (width / 2)
+        midpointY = y - (height / 2)
+        return (midpointX, midpointY)
 
     def hexToInt(self, hexval):
         intvals = []
@@ -563,10 +497,7 @@ class GUI:
         self.updateSiteDimensions()
         self.destroyCanvas()
         self.configureCanvas()
-        if self.activeGraph.get() != "None" and self.widgets["graphButton"].cget("state") != "disabled":
-            self.configureGraph()
-        else:
-            self.configureGraph()
+        self.configureGraph()
 
     def updateGraphAxes(self, maxX, maxY):
         xTicks = len(self.graphObjects["xTickLabels"])

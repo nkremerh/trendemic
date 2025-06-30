@@ -64,16 +64,16 @@ class Trendemic:
 
         numNeighbors = 3
         for a in self.agents:
-            neighbors = []
             for i in range(numNeighbors):
                 neighborID = random.randint(0, len(self.agents) - 1)
                 neighbor = self.agents[neighborID]
-                if neighbor == self or neighbor in neighbors:
+                if neighbor == self or neighbor in a.neighbors:
                     continue
                 else:
-                    neighbors.append(neighbor)
-            a.neighbors = neighbors
-            a.localNeighbors = neighbors
+                    a.neighbors.append(neighbor)
+                    if a not in neighbor.neighbors:
+                        neighbor.neighbors.append(a)
+            a.localNeighbors = a.neighbors
 
     def doTimestep(self):
         if self.timestep >= self.maxTimestep:
@@ -85,8 +85,9 @@ class Trendemic:
         if self.end == True or (len(self.agents) == 0 and self.keepAlive == False):
             self.toggleEnd()
         else:
-            random.shuffle(self.agents)
-            for agent in self.agents:
+            turnOrder = self.agents.copy()
+            random.shuffle(turnOrder)
+            for agent in turnOrder:
                 agent.doTimestep(self.timestep)
             self.updateRuntimeStats()
             if self.gui != None:
