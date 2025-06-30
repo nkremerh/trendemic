@@ -1,0 +1,29 @@
+{
+    "__README__": "Default values for helper scripts. Details can be found in the README.",
+    "dataCollectionOptions": {
+        "jobUpdateFrequency": 5,
+        "numParallelSimJobs": 1,
+        "numSeeds": 100,
+        "plots": [],
+        "plotStatistic": "mean",
+        "plotTimesteps": 1000,
+        "pythonAlias": "python"
+    },
+    "trendemicOptions": {
+        "__README__": "Default values for Trendemic simulation provided here. Details can be found in the README.",
+        "debugMode": ["all"],
+        "experimentalGroup": null,
+        "headlessMode": false,
+        "interfaceHeight": 1400,
+        "interfaceWidth": 1200,
+        "keepAlivePostExtinction": false,
+        "keepAliveAtEnd": false,
+        "logfile": "log.json",
+        "logfileFormat": "json",
+        "numAgents": 10,
+        "profileMode": false,
+        "screenshots": false,
+        "seed": -1,
+        "timesteps": 10
+    }
+}
