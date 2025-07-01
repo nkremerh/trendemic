@@ -78,7 +78,8 @@ class GUI:
             self.nodes[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
-        self.doForceDirection()
+        self.doRepulsion()
+        self.doAttraction()
         self.drawEdges()
 
     def configureGraphNames(self):
@@ -119,6 +120,38 @@ class GUI:
     def destroyCanvas(self):
         self.canvas.destroy()
 
+    def doAttraction(self):
+        traversed = []
+        attractiveForce = 0.005
+        for source in self.nodes:
+            for sink in self.nodes:
+                if source in traversed:
+                    continue
+                neighbors = source["agent"].neighbors
+                sinkAgent = None
+                for neighbor in neighbors:
+                    if neighbor == sink["agent"]:
+                        sinkAgent = sink["agent"]
+                        break
+                if sinkAgent == None:
+                    continue
+                a = self.findMidpoint(source["object"])
+                b = self.findMidpoint(sink["object"])
+                aX = a[0]
+                aY = a[1]
+                bX = b[0]
+                bY = b[1]
+                attraction = attractiveForce * (((bX - aX)**2) + ((bY - aY)**2))
+                theta = math.atan((bY - aY) / (bX - aX)) if (bX - aX) > 0 else 0
+                attractionA = ((attraction * math.cos(theta)), (attraction * math.sin(theta)))
+                attractionB = (((-1 * attraction) * math.cos(theta)), ((-1 * attraction) * math.sin(theta)))
+                source["deltaX"] = attractionA[0]
+                source["deltaY"] = attractionA[1]
+                sink["deltaX"] = attractionB[0]
+                sink["deltaY"] = attractionB[1]
+            traversed.append(source)
+        self.drawGraph()
+
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
         self.resizeInterface()
@@ -147,31 +180,12 @@ class GUI:
     def doEditingMenu(self):
         self.doTimestep()
 
-    def doEnvironmentColorMenu(self):
-        self.activeColorOptions["environment"] = self.lastSelectedEnvironmentColor.get()
+    def doPlayButton(self, *args):
+        self.trendemic.toggleRun()
+        self.widgets["playButton"].config(text="Play Simulation" if self.trendemic.run == False else "Pause Simulation")
         self.doTimestep()
 
-    def doGraphMenu(self):
-        self.destroyCanvas()
-        self.configureCanvas()
-        if self.activeGraph.get() != "None":
-            self.clearHighlight()
-            self.drawGraph()
-            self.widgets["networkButton"].configure(state="disabled")
-            self.widgets["agentColorButton"].configure(state="disabled")
-            self.widgets["environmentColorButton"].configure(state="disabled")
-        else:
-            self.drawGraph()
-            self.widgets["networkButton"].configure(state="normal")
-            self.widgets["agentColorButton"].configure(state="normal")
-            self.widgets["environmentColorButton"].configure(state="normal")
-        self.window.update()
-
-    def doGraphTimestep(self):
-        activeGraph = self.activeGraph.get()
-        self.updateHistogram()
-
-    def doForceDirection(self):
+    def doRepulsion(self):
         traversed = []
         repulsiveForce = 0.005
         for source in self.nodes:
@@ -194,11 +208,7 @@ class GUI:
                 sink["deltaX"] = repulsionB[0]
                 sink["deltaY"] = repulsionB[1]
             traversed.append(source)
-
-    def doPlayButton(self, *args):
-        self.trendemic.toggleRun()
-        self.widgets["playButton"].config(text="Play Simulation" if self.trendemic.run == False else "Pause Simulation")
-        self.doTimestep()
+        self.drawGraph()
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
@@ -228,8 +238,8 @@ class GUI:
                 self.canvas.itemconfig(agent["object"], fill=fillColor)
             agent["color"] = fillColor
         self.updateLabels()
-        self.doForceDirection()
-        self.drawGraph()
+        self.doRepulsion()
+        self.doAttraction()
         self.window.update()
 
     def doWindowClose(self, *args):
@@ -253,22 +263,22 @@ class GUI:
                 edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
                 self.edges.append(edge)
 
-    # TODO: Do force-directed graph redraw
     def drawGraph(self):
         for node in self.nodes:
+            deltaX = node["deltaX"] if "deltaX" in node else 0
+            deltaY = node["deltaY"] if "deltaY" in node else 0
             nodeObject = node["object"]
             nodeMidpoint = self.findMidpoint(nodeObject)
             nodeX = nodeMidpoint[0]
             nodeY = nodeMidpoint[1]
-            stepX = nodeX + node["deltaX"]
-            stepY = nodeY + node["deltaY"]
+            stepX = nodeX + deltaX
+            stepY = nodeY + deltaY
             fillColor = self.lookupFillColor(node["agent"])
             x1 = stepX
             y1 = stepY
             x2 = x1 + self.siteWidth
             y2 = y1 + self.siteHeight
             self.canvas.coords(nodeObject, x1, y1, x2, y2)
-        self.doForceDirection()
         self.drawEdges()
 
     def findMidpoint(self, canvasObject):
