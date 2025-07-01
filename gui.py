@@ -7,7 +7,8 @@ class GUI:
         self.screenHeight = screenHeight
         self.screenWidth = screenWidth
         self.canvas = None
-        self.graph = [None for i in range(len(self.trendemic.agents))]
+        self.nodes = [None for i in range(len(self.trendemic.agents))]
+        self.edges = []
         self.window = None
         self.doubleClick = False
         self.resizeID = None
@@ -16,92 +17,22 @@ class GUI:
         self.colors = {"default": self.palette[0], "influencer": self.palette[1], "influenced": self.palette[2]}
 
         # Set the default strings for interface at simulation start
-        self.defaultAgentString = "Agent: - | Age: -"
         self.defaultSimulationString = "Timestep: - | Agents: -"
 
         self.widgets = {}
-        self.activeNetwork = None
-        self.activeGraph = None
         self.borderEdge = 5
-        self.graphObjects = {}
         self.graphBorder = 90
-        self.xTicks = 10
-        self.yTicks = 2
-        self.lastSelectedAgentColor = None
-        self.lastSelectedEnvironmentColor = None
-        self.activeColorOptions = {"agent": None, "environment": None}
-        self.highlightedAgent = None
-        self.highlightedCell = None
-        self.highlightRectangle = None
-        self.menuTrayColumns = 6
+        self.menuTrayColumns = 3
         self.siteHeight = 0
         self.siteWidth = 0
         self.stopSimulation = False
         self.configureWindow()
-
-    def clamp(self, value, mininum, maximum):
-        if value < mininum:
-            return mininum
-        elif value > maximum:
-            return maximum
-        return value
-
-    def clearHighlight(self):
-        self.highlightedAgent = None
-        self.highlightedCell = None
-        if self.highlightRectangle != None:
-            self.canvas.delete(self.highlightRectangle)
-            self.highlightRectangle = None
-        self.updateHighlightedCellStats()
-
-    def configureAgentColorNames(self):
-        return ["Decision Models", "Depression", "Disease", "Metabolism", "Movement", "Sex", "Tribes", "Vision"]
 
     def configureButtons(self, window):
         playButton = tkinter.Button(window, text="Play Simulation", command=self.doPlayButton)
         playButton.grid(row=0, column=0, sticky="nsew")
         stepButton = tkinter.Button(window, text="Step Forward", command=self.doStepForwardButton, relief=tkinter.RAISED)
         stepButton.grid(row=0, column=1, sticky="nsew")
-
-        networkButton = tkinter.Menubutton(window, text="Networks", relief=tkinter.RAISED)
-        networkMenu = tkinter.Menu(networkButton, tearoff=0)
-        networkButton.configure(menu=networkMenu)
-        networkNames = self.configureNetworkNames()
-        networkNames.insert(0, "None")
-        self.activeNetwork = tkinter.StringVar(window)
-
-        # Use first item as default name
-        self.activeNetwork.set(networkNames[0])
-        for network in networkNames:
-            networkMenu.add_checkbutton(label=network, onvalue=network, offvalue=network, variable=self.activeNetwork, command=self.doNetworkMenu, indicatoron=True)
-        networkButton.grid(row=0, column=2, sticky="nsew") 
-
-        graphButton = tkinter.Menubutton(window, text="Graphs", relief=tkinter.RAISED)
-        graphMenu = tkinter.Menu(graphButton, tearoff=0)
-        graphButton.configure(menu=graphMenu)
-        graphNames = self.configureGraphNames()
-        graphNames.insert(0, "None")
-        self.activeGraph = tkinter.StringVar(window)
-
-        # Use first item as default name
-        self.activeGraph.set(graphNames[0])
-        for graph in graphNames:
-            graphMenu.add_checkbutton(label=graph, onvalue=graph, offvalue=graph, variable=self.activeGraph, command=self.doGraphMenu, indicatoron=True)
-        graphButton.grid(row=0, column=3, sticky="nsew") 
-
-        agentColorButton = tkinter.Menubutton(window, text="Agent Coloring", relief=tkinter.RAISED)
-        agentColorMenu = tkinter.Menu(agentColorButton, tearoff=0)
-        agentColorButton.configure(menu=agentColorMenu)
-        agentColorNames = self.configureAgentColorNames()
-        agentColorNames.sort()
-        agentColorNames.insert(0, "Default")
-        self.lastSelectedAgentColor = tkinter.StringVar(window)
-
-        # Use first item as default name
-        self.lastSelectedAgentColor.set(agentColorNames[0])
-        for name in agentColorNames:
-            agentColorMenu.add_checkbutton(label=name, onvalue=name, offvalue=name, variable=self.lastSelectedAgentColor, command=self.doAgentColorMenu, indicatoron=True)
-        agentColorButton.grid(row=0, column=4, sticky="nsew")
 
         editingButton = tkinter.Menubutton(window, text="Editing Mode", relief=tkinter.RAISED)
         editingMenu = tkinter.Menu(editingButton, tearoff=0)
@@ -115,27 +46,18 @@ class GUI:
         self.lastSelectedEditingMode.set(editingModes[0])
         for mode in editingModes:
             editingMenu.add_checkbutton(label=mode, onvalue=mode, offvalue=mode, variable=self.lastSelectedEditingMode, command=self.doEditingMenu, indicatoron=True)
-        editingButton.grid(row=0, column=5, sticky="nsew")
+        editingButton.grid(row=0, column=2, sticky="nsew")
 
         statsLabel = tkinter.Label(window, text=self.defaultSimulationString, font="Roboto 10", justify=tkinter.CENTER)
-
+        statsLabel.grid(row=1, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
         self.widgets["playButton"] = playButton
         self.widgets["stepButton"] = stepButton
-        self.widgets["networkButton"] = networkButton
-        self.widgets["graphButton"] = graphButton
-        self.widgets["agentColorButton"] = agentColorButton
         self.widgets["editingButton"] = editingButton
-        self.widgets["agentColorMenu"] = agentColorMenu
         self.widgets["statsLabel"] = statsLabel
 
     def configureCanvas(self):
         canvas = tkinter.Canvas(self.window, background="white")
         canvas.grid(row=3, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
-        if self.activeGraph.get() == "None":
-            canvas.bind("<Button-1>", self.doClick)
-            canvas.bind("<Double-Button-1>", self.doDoubleClick)
-            canvas.bind("<Control-Button-1>", self.doControlClick)
-            self.doubleClick = False
         self.canvas = canvas
 
     def configureEditingModes(self):
@@ -144,22 +66,20 @@ class GUI:
     def configureGraph(self):
         i = 1
         j = 1
+        # Setup initial radial dispersion of nodes for force-directed layout
         for agent in self.trendemic.agents:
+            stepX = math.cos(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
+            stepY = math.sin(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
             fillColor = self.lookupFillColor(agent)
-            x1 = i * self.siteWidth
-            y1 = j * self.siteHeight
+            x1 = stepX * self.siteWidth + 100 + (self.screenWidth / 4)
+            y1 = stepY * self.siteHeight + 100 + (self.screenHeight / 4)
             x2 = x1 + self.siteWidth
             y2 = y1 + self.siteHeight
-            if self.activeNetwork.get() != "None":
-                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y1, fill=fillColor, outline=""), "agent": agent, "color": fillColor}
-            else:
-                self.graph[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
+            self.nodes[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
+        self.doForceDirection()
         self.drawEdges()
-
-        if self.highlightedCell != None:
-            self.highlightCell(self.highlightedCell)
 
     def configureGraphNames(self):
         return ["TODO"]
@@ -196,50 +116,8 @@ class GUI:
 
         self.doCrossPlatformWindowSizing()
 
-    def deleteLines(self):
-        self.canvas.delete("line")
-
     def destroyCanvas(self):
         self.canvas.destroy()
-
-    def doAgentColorMenu(self, *args):
-        self.activeColorOptions["agent"] = self.lastSelectedAgentColor.get()
-        self.doTimestep()
-
-    def doClick(self, event):
-        self.canvas.after(300, self.doClickAction, event)
-
-    def doClickAction(self, event):
-        cell = self.findClickedCell(event)
-        if self.doubleClick == True:
-            if cell == self.highlightedCell or cell.agent == None:
-                self.clearHighlight()
-            else:
-                self.highlightedCell = cell
-                self.highlightedAgent = cell.agent
-                self.highlightCell(cell)
-            self.doubleClick = False
-        else:
-            if cell == self.highlightedCell and self.highlightedAgent == None:
-                self.clearHighlight()
-            else:
-                self.highlightedCell = cell
-                self.highlightedAgent = None
-                self.highlightCell(cell)
-        if self.lastSelectedEditingMode.get() != "None":
-            self.doEditAction(cell)
-        self.doTimestep()
-
-    def doControlClick(self, event):
-        self.doubleClick = False
-        cell = self.findClickedCell(event)
-        if cell == self.highlightedCell or cell.agent == None:
-            self.clearHighlight()
-        else:
-            self.highlightedCell = cell
-            self.highlightedAgent = cell.agent
-            self.highlightCell(cell)
-        self.doTimestep()
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -278,12 +156,12 @@ class GUI:
         self.configureCanvas()
         if self.activeGraph.get() != "None":
             self.clearHighlight()
-            self.configureGraph()
+            self.drawGraph()
             self.widgets["networkButton"].configure(state="disabled")
             self.widgets["agentColorButton"].configure(state="disabled")
             self.widgets["environmentColorButton"].configure(state="disabled")
         else:
-            self.configureGraph()
+            self.drawGraph()
             self.widgets["networkButton"].configure(state="normal")
             self.widgets["agentColorButton"].configure(state="normal")
             self.widgets["environmentColorButton"].configure(state="normal")
@@ -293,19 +171,29 @@ class GUI:
         activeGraph = self.activeGraph.get()
         self.updateHistogram()
 
-    def doNetworkMenu(self):
-        if self.activeNetwork.get() != "None":
-            self.widgets["graphButton"].configure(state="disabled")
-            self.widgets["agentColorButton"].configure(state="disabled")
-            self.widgets["environmentColorButton"].configure(state="disabled")
-        else:
-            self.widgets["graphButton"].configure(state="normal")
-            self.widgets["agentColorButton"].configure(state="normal")
-            self.widgets["environmentColorButton"].configure(state="normal")
-        self.destroyCanvas()
-        self.configureCanvas()
-        self.configureGraph()
-        self.window.update()
+    def doForceDirection(self):
+        traversed = []
+        repulsiveForce = 0.005
+        for source in self.nodes:
+            for sink in self.nodes:
+                if source in traversed:
+                    continue
+                a = self.findMidpoint(source["object"])
+                b = self.findMidpoint(sink["object"])
+                aX = a[0]
+                aY = a[1]
+                bX = b[0]
+                bY = b[1]
+                repulsionDenominator = math.sqrt(((bX - aX)**2) + ((bY - aY)**2))
+                repulsion = repulsiveForce / repulsionDenominator if repulsionDenominator > 0 else 0
+                theta = math.atan((bY - aY) / (bX - aX)) if (bX - aX) > 0 else 0
+                repulsionA = (((-1 * repulsion) * math.cos(theta)), ((-1 * repulsion) * math.sin(theta)))
+                repulsionB = ((repulsion * math.cos(theta)), (repulsion * math.sin(theta)))
+                source["deltaX"] = repulsionA[0]
+                source["deltaY"] = repulsionA[1]
+                sink["deltaX"] = repulsionB[0]
+                sink["deltaY"] = repulsionB[1]
+            traversed.append(source)
 
     def doPlayButton(self, *args):
         self.trendemic.toggleRun()
@@ -334,28 +222,14 @@ class GUI:
         if self.stopSimulation == True:
             self.trendemic.toggleEnd()
             return
-        if self.activeGraph.get() != "None" and self.widgets["graphButton"].cget("state") != "disabled":
-            self.doGraphTimestep()
-        else:
-            for agent in self.graph:
-                fillColor = self.lookupFillColor(agent["agent"])
-                if self.activeNetwork.get() == "None" and agent["color"] != fillColor:
-                    self.canvas.itemconfig(agent["object"], fill=fillColor, outline="#C0C0C0")
-                elif agent["color"] != fillColor:
-                    self.canvas.itemconfig(agent["object"], fill=fillColor)
-                agent["color"] = fillColor
-
-            if self.activeNetwork.get() != "None":
-                self.deleteLines()
-                self.drawLines()
-            if self.highlightedAgent != None:
-                if self.highlightedAgent.isAlive() == True:
-                    self.highlightedCell = self.highlightedAgent.cell
-                    self.highlightCell(self.highlightedCell)
-                else:
-                    self.clearHighlight()
-
+        for agent in self.nodes:
+            fillColor = self.lookupFillColor(agent["agent"])
+            if agent["color"] != fillColor:
+                self.canvas.itemconfig(agent["object"], fill=fillColor)
+            agent["color"] = fillColor
         self.updateLabels()
+        self.doForceDirection()
+        self.drawGraph()
         self.window.update()
 
     def doWindowClose(self, *args):
@@ -364,50 +238,38 @@ class GUI:
         self.trendemic.toggleEnd()
 
     def drawEdges(self):
+        for edge in self.edges:
+            self.canvas.delete(edge)
         for agent in self.trendemic.agents:
-            agentNode = self.graph[agent.ID]["object"]
+            agentNode = self.nodes[agent.ID]["object"]
             agentMidpoint = self.findMidpoint(agentNode)
             agentX = agentMidpoint[0]
             agentY = agentMidpoint[1]
             for n in range(len(agent.neighbors)):
-                neighborNode = self.graph[n]["object"]
+                neighborNode = self.nodes[n]["object"]
                 neighborMidpoint = self.findMidpoint(neighborNode)
                 neighborX = neighborMidpoint[0]
                 neighborY = neighborMidpoint[1]
-                self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
+                edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
+                self.edges.append(edge)
 
-    def findClickedCell(self, event):
-        # Account for padding in GUI cells
-        eventX = event.x - self.borderEdge
-        eventY = event.y - self.borderEdge
-        gridX = math.floor(eventX / self.siteWidth)
-        gridY = math.floor(eventY / self.siteHeight)
-        # Handle clicking just outside edge cells
-        if gridX < 0:
-            gridX = 0
-        elif gridX > len(self.trendemic.agents) - 1:
-            gridX = len(self.trendemic.agents) - 1
-        if gridY < 0:
-            gridY = 0
-        elif gridY > len(self.trendemic.agents) - 1:
-            gridY = len(self.trendemic.agents) - 1
-        cell = self.trendemic.environment.findCell(gridX, gridY)
-        return cell
-
-    def findColorRange(self, startColor, endColor, minValue, maxValue):
-        numColors = maxValue - minValue + 1
-        if numColors < 2:
-            return {minValue: endColor}
-
-        startRGB = self.hexToInt(startColor)
-        endRGB = self.hexToInt(endColor)
-        colorRange = {}
-        for i in range(numColors):
-            factor = i / (numColors - 1)
-            interpolatedRGB = self.interpolateColor(startRGB, endRGB, factor)
-            colorRange[minValue + i] = self.intToHex(interpolatedRGB)
-
-        return colorRange
+    # TODO: Do force-directed graph redraw
+    def drawGraph(self):
+        for node in self.nodes:
+            nodeObject = node["object"]
+            nodeMidpoint = self.findMidpoint(nodeObject)
+            nodeX = nodeMidpoint[0]
+            nodeY = nodeMidpoint[1]
+            stepX = nodeX + node["deltaX"]
+            stepY = nodeY + node["deltaY"]
+            fillColor = self.lookupFillColor(node["agent"])
+            x1 = stepX
+            y1 = stepY
+            x2 = x1 + self.siteWidth
+            y2 = y1 + self.siteHeight
+            self.canvas.coords(nodeObject, x1, y1, x2, y2)
+        self.doForceDirection()
+        self.drawEdges()
 
     def findMidpoint(self, canvasObject):
         coords = self.canvas.coords(canvasObject)
@@ -419,41 +281,7 @@ class GUI:
         midpointY = y - (height / 2)
         return (midpointX, midpointY)
 
-    def hexToInt(self, hexval):
-        intvals = []
-        hexval = hexval.lstrip('#')
-        for i in range(0, len(hexval), 2):
-            subval = hexval[i:i + 2]
-            intvals.append(int(subval, 16))
-        return intvals
-    
-    def highlightCell(self, cell):
-        x = cell.x
-        y = cell.y
-        x1 = self.borderEdge + x * self.siteWidth
-        y1 = self.borderEdge + y * self.siteHeight
-        x2 = self.borderEdge + (x + 1) * self.siteWidth
-        y2 = self.borderEdge + (y + 1) * self.siteHeight
-
-        if self.highlightRectangle != None:
-            self.canvas.delete(self.highlightRectangle)
-        self.highlightRectangle = self.canvas.create_rectangle(x1, y1, x2, y2, fill="", activefill="#88cafc", outline="black", width=5)
-
-    def interpolateColor(self, startRGB, endRGB, factor):
-        return [int((1 - factor) * startValue + factor * endValue)
-                for startValue, endValue in zip(startRGB, endRGB)]
-
-    def intToHex(self, intvals):
-        hexval = "#"
-        for i in intvals:
-            subhex = "%0.2X" % i
-            hexval = hexval + subhex
-        return hexval
-
     def lookupFillColor(self, agent):
-        if self.activeNetwork.get() != "None":
-            return self.lookupNetworkColor(cell)
-        
         if agent == None:
             return "black"
         elif agent.influencer:
@@ -462,36 +290,6 @@ class GUI:
             return self.colors["influenced"]
         return self.colors["default"]
 
-    def lookupNetworkColor(self, cell):
-        agent = cell.agent
-        if agent == None:
-            return "white"
-        elif self.activeNetwork.get() in ["Neighbors", "Friends", "Trade"]:
-            return "black"
-        elif self.activeNetwork.get() == "Family":
-            isChild = agent.socialNetwork["father"] != None or agent.socialNetwork["mother"] != None
-            isParent = len(agent.socialNetwork["children"]) > 0
-            if isChild == False and isParent == False:
-                return "black"
-            elif isChild == False and isParent == True:
-                return "red"
-            elif isChild == True and isParent == False:
-                return "green"
-            else: # isChild == True and isParent == True
-                return "yellow"
-        elif self.activeNetwork.get() == "Loans":
-            isLender = len(agent.socialNetwork["debtors"]) > 0
-            isBorrower = len(agent.socialNetwork["creditors"]) > 0
-            if isLender == True:
-                return "yellow" if isBorrower == True else "green"
-            elif isBorrower == True:
-                return "red"
-            else:
-                return "black"
-        elif self.activeNetwork.get() == "Disease":
-            return self.colors["sick"] if agent.isSick() == True else self.colors["healthy"]
-        return "black"
-
     def resizeInterface(self):
         self.updateScreenDimensions()
         self.updateSiteDimensions()
@@ -499,80 +297,12 @@ class GUI:
         self.configureCanvas()
         self.configureGraph()
 
-    def updateGraphAxes(self, maxX, maxY):
-        xTicks = len(self.graphObjects["xTickLabels"])
-        for i in range(1, xTicks + 1):
-            self.canvas.itemconfigure(self.graphObjects["xTickLabels"][i / xTicks], text=round(i / xTicks * maxX))
-        yTicks = len(self.graphObjects["yTickLabels"])
-        for i in range(1, yTicks + 1):
-            self.canvas.itemconfigure(self.graphObjects["yTickLabels"][i / yTicks], text=round(i / yTicks * maxY))
-
-    def updateGraphDimensions(self):
-        self.window.update_idletasks()
-        canvasWidth = self.canvas.winfo_width()
-        canvasHeight = self.canvas.winfo_height()
-        self.graphStartX = self.graphBorder
-        self.graphWidth = max(canvasWidth - 2 * self.graphBorder, 0)
-        self.graphStartY = self.graphBorder
-        self.graphHeight = max(canvasHeight - 2 * self.graphBorder, 0)
-
-    def updateHighlightedCellStats(self):
-        cell = self.highlightedCell
-        if cell != None:
-            cellSeason = cell.season if cell.season != None else '-'
-            cellStats = f"Cell: ({cell.x},{cell.y}) | Sugar: {cell.sugar}/{cell.maxSugar} | Spice: {cell.spice}/{cell.maxSpice} | Pollution: {round(cell.pollution, 2)} | Season: {cellSeason}"
-            agent = cell.agent
-            if agent != None:
-                agentStats = f"Agent: {str(agent)} | Age: {agent.age} | Vision: {round(agent.findVision(), 2)} | Movement: {round(agent.findMovement(), 2)} | "
-                agentStats += f"Sugar: {round(agent.sugar, 2)} | Spice: {round(agent.spice, 2)} | "
-                agentStats += f"Metabolism: {round(((agent.findSugarMetabolism() + agent.findSpiceMetabolism()) / 2), 2)} | Decision Model: {agent.decisionModel} | Tribe: {agent.tribe}"
-            else:
-                agentStats = self.defaultAgentString
-            cellStats += f"\n{agentStats}"
-        else:
-            cellStats = f"{self.defaultCellString}\n{self.defaultAgentString}"
-
-        label = self.widgets["cellLabel"]
-        label.config(text=cellStats)
-
-    def updateHistogram(self):
-        bins = self.graphObjects["bins"]
-        labels = self.graphObjects["binLabels"]
-        graphStats = {
-            "Tag Histogram": (self.trendemic.graphStats["meanTribeTags"], self.trendemic.configuration["agentTagStringLength"]),
-            "Age Histogram": (self.trendemic.graphStats["ageBins"], self.trendemic.configuration["agentMaxAge"][1]),
-            "Sugar Histogram": (self.trendemic.graphStats["sugarBins"], self.trendemic.graphStats["maxSugar"]),
-            "Spice Histogram": (self.trendemic.graphStats["spiceBins"], self.trendemic.graphStats["maxSpice"]),
-        }
-        activeGraph = self.activeGraph.get()
-        binValues = graphStats[activeGraph][0]
-        maxX = graphStats[activeGraph][1]
-        if len(binValues) == 0:
-            maxBinHeight = 0
-        elif activeGraph == "Tag Histogram":
-            maxBinHeight = 100
-        else:
-            maxBinHeight = max(binValues)
-
-        if maxBinHeight != 0:
-            self.updateGraphAxes(maxX, maxBinHeight)
-            for i in range(len(bins)):
-                x0, y0, x1, y1 = self.canvas.coords(bins[i])
-                y0 = y1 - (binValues[i] / maxBinHeight) * self.graphHeight
-                self.canvas.coords(bins[i], x0, y0, x1, y1)
-                x2, y2 = self.canvas.coords(labels[i])
-                y2 = y0 - 10
-                self.canvas.itemconfigure(labels[i], text=round(binValues[i]))
-                self.canvas.coords(labels[i], x2, y2)
-
     def updateLabels(self):
         self.trendemic.updateRuntimeStats()
         stats = self.trendemic.runtimeStats
         statsString = f"Timestep: {self.trendemic.timestep} | Agents: {stats['population']}"
         label = self.widgets["statsLabel"]
         label.config(text=statsString)
-        if self.highlightedCell != None:
-            self.updateHighlightedCellStats()
 
     def updateScreenDimensions(self):
         self.window.update_idletasks()

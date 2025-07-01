@@ -31,8 +31,6 @@ class Trendemic:
         self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
         self.run = False # Simulation start flag
         self.end = False # Simulation end flag
-        # TODO: Remove redundant metrics
-        # TODO: Streamline naming
         self.runtimeStats = {"timestep": 0, "population": 0
                              }
         self.graphStats = {"ageBins": [], "sugarBins": [], "spiceBins": [], "lorenzCurvePoints": [], "meanTribeTags": [],
@@ -268,7 +266,6 @@ class Trendemic:
                 continue
             numAgents += 1
 
-        # TODO: make clear whether agent or environment calculation
         runtimeStats = {"population": numAgents
                         }
 
