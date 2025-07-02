@@ -91,7 +91,7 @@ class GUI:
     def configureWindow(self):
         window = tkinter.Tk()
         self.window = window
-        window.title("Sugarscape")
+        window.title("Trendemic")
         window.minsize(width=150, height=250)
         # Do one-quarter window sizing only after initial window object is created to get user's monitor dimensions
         if self.screenWidth < 0:

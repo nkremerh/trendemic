@@ -17,7 +17,7 @@ class Agent:
         self.localWeight = configuration["localWeight"]
         self.threshold = configuration["threshold"]
 
-        self.influenced = False
+        self.influenced = True if self.influencer == True else False
         self.nextInfluenced = False
         self.age = 0
         self.neighbors = []
@@ -27,11 +27,6 @@ class Agent:
     def doInfluence(self):
         if len(self.neighbors) == 0:
             return
-        # TODO: Replace starter influencer meme propagation
-        if self.influencer:
-            neighbor = self.neighbors[random.randint(0, len(self.neighbors) - 1)]
-            if neighbor.influenced == False:
-                neighbor.influenced = True
         fractionInfluenced = 0
         globalFractionInfluenced = 0
         localFractionInfluenced = 0
