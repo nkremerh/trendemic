@@ -108,7 +108,6 @@ class GUI:
         self.updateSiteDimensions()
         self.configureGraph()
 
-
         self.window.protocol("WM_DELETE_WINDOW", self.doWindowClose)
         self.window.bind("<Escape>", self.doWindowClose)
         self.window.bind("<space>", self.doPlayButton)
@@ -281,8 +280,8 @@ class GUI:
             deltaX *= damping
             deltaY *= damping
             maxStep = 5
-            deltaX = max(min(deltaX, maxStep), -maxStep)
-            deltaY = max(min(deltaY, maxStep), -maxStep)
+            deltaX = max(min(deltaX, maxStep), -1 * maxStep)
+            deltaY = max(min(deltaY, maxStep), -1 * maxStep)
             self.canvas.move(nodeObject, deltaX, deltaY)
         self.drawEdges()
 
