@@ -71,15 +71,14 @@ class GUI:
             stepX = math.cos(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
             stepY = math.sin(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
             fillColor = self.lookupFillColor(agent)
-            x1 = stepX * self.siteWidth + 100 + (self.screenWidth / 4)
-            y1 = stepY * self.siteHeight + 100 + (self.screenHeight / 4)
+            x1 = stepX * self.siteWidth * 5 + (self.screenWidth / 2)
+            y1 = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
             x2 = x1 + self.siteWidth
             y2 = y1 + self.siteHeight
             self.nodes[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
-        self.doRepulsion()
-        self.doAttraction()
+        self.doRunLayout()
         self.drawEdges()
 
     def configureGraphNames(self):
@@ -109,6 +108,7 @@ class GUI:
         self.updateSiteDimensions()
         self.configureGraph()
 
+
         self.window.protocol("WM_DELETE_WINDOW", self.doWindowClose)
         self.window.bind("<Escape>", self.doWindowClose)
         self.window.bind("<space>", self.doPlayButton)
@@ -122,7 +122,7 @@ class GUI:
 
     def doAttraction(self):
         traversed = []
-        attractiveForce = 0.005
+        attractiveForce = 0.00003
         for source in self.nodes:
             for sink in self.nodes:
                 if source in traversed:
@@ -135,20 +135,18 @@ class GUI:
                         break
                 if sinkAgent == None:
                     continue
-                a = self.findMidpoint(source["object"])
-                b = self.findMidpoint(sink["object"])
-                aX = a[0]
-                aY = a[1]
-                bX = b[0]
-                bY = b[1]
-                attraction = attractiveForce * (((bX - aX)**2) + ((bY - aY)**2))
-                theta = math.atan((bY - aY) / (bX - aX)) if (bX - aX) > 0 else 0
+                aX, aY = self.findMidpoint(source["object"])
+                bX, bY = self.findMidpoint(sink["object"])
+                dx = bX - aX
+                dy = bY - aY
+                attraction = attractiveForce * (math.sqrt((dx**2) + (dx**2)))
+                theta = math.atan2((bY - aY), (bX - aX))
                 attractionA = ((attraction * math.cos(theta)), (attraction * math.sin(theta)))
                 attractionB = (((-1 * attraction) * math.cos(theta)), ((-1 * attraction) * math.sin(theta)))
-                source["deltaX"] = attractionA[0]
-                source["deltaY"] = attractionA[1]
-                sink["deltaX"] = attractionB[0]
-                sink["deltaY"] = attractionB[1]
+                source["deltaX"] += attractionA[0]
+                source["deltaY"] += attractionA[1]
+                sink["deltaX"] += attractionB[0]
+                sink["deltaY"] += attractionB[1]
             traversed.append(source)
         self.drawGraph()
 
@@ -187,26 +185,32 @@ class GUI:
 
     def doRepulsion(self):
         traversed = []
-        repulsiveForce = 0.005
+        repulsiveForce = 10
+
+        #set initial values for node's delta values
+        for node in self.nodes:
+            node["deltaX"] = 0
+            node["deltaY"] = 0
+
         for source in self.nodes:
             for sink in self.nodes:
                 if source in traversed:
                     continue
-                a = self.findMidpoint(source["object"])
-                b = self.findMidpoint(sink["object"])
-                aX = a[0]
-                aY = a[1]
-                bX = b[0]
-                bY = b[1]
-                repulsionDenominator = math.sqrt(((bX - aX)**2) + ((bY - aY)**2))
+                aX, aY = self.findMidpoint(source["object"])
+                bX, bY = self.findMidpoint(sink["object"])
+                dx = bX - aX
+                dy = bY - aY
+                repulsionDenominator = math.sqrt(dx**2 + dy**2)
+                if repulsionDenominator < 1e-2:
+                    repulsionDenominator = 1e-2
                 repulsion = repulsiveForce / repulsionDenominator if repulsionDenominator > 0 else 0
-                theta = math.atan((bY - aY) / (bX - aX)) if (bX - aX) > 0 else 0
+                theta = math.atan2(dy, dx) #atan2 is better
                 repulsionA = (((-1 * repulsion) * math.cos(theta)), ((-1 * repulsion) * math.sin(theta)))
                 repulsionB = ((repulsion * math.cos(theta)), (repulsion * math.sin(theta)))
-                source["deltaX"] = repulsionA[0]
-                source["deltaY"] = repulsionA[1]
-                sink["deltaX"] = repulsionB[0]
-                sink["deltaY"] = repulsionB[1]
+                source["deltaX"] += repulsionA[0] #modification -> summate instead of overwrite
+                source["deltaY"] += repulsionA[1]
+                sink["deltaX"] += repulsionB[0]
+                sink["deltaY"] += repulsionB[1]
             traversed.append(source)
         self.drawGraph()
 
@@ -238,9 +242,15 @@ class GUI:
                 self.canvas.itemconfig(agent["object"], fill=fillColor)
             agent["color"] = fillColor
         self.updateLabels()
-        self.doRepulsion()
-        self.doAttraction()
+        #self.doRepulsion()
+        #self.doAttraction()
         self.window.update()
+
+    def doRunLayout(self, steps=50):
+        for _ in range(steps):
+            self.doRepulsion()
+            self.doAttraction()
+            self.window.update_idletasks()
 
     def doWindowClose(self, *args):
         self.stopSimulation = True
@@ -268,17 +278,13 @@ class GUI:
             deltaX = node["deltaX"] if "deltaX" in node else 0
             deltaY = node["deltaY"] if "deltaY" in node else 0
             nodeObject = node["object"]
-            nodeMidpoint = self.findMidpoint(nodeObject)
-            nodeX = nodeMidpoint[0]
-            nodeY = nodeMidpoint[1]
-            stepX = nodeX + deltaX
-            stepY = nodeY + deltaY
-            fillColor = self.lookupFillColor(node["agent"])
-            x1 = stepX
-            y1 = stepY
-            x2 = x1 + self.siteWidth
-            y2 = y1 + self.siteHeight
-            self.canvas.coords(nodeObject, x1, y1, x2, y2)
+            damping = 0.88 #added a damping feature to avoid explosions
+            deltaX *= damping
+            deltaY *= damping
+            maxStep = 5
+            deltaX = max(min(deltaX, maxStep), -maxStep)
+            deltaY = max(min(deltaY, maxStep), -maxStep)
+            self.canvas.move(nodeObject, deltaX, deltaY)
         self.drawEdges()
 
     def findMidpoint(self, canvasObject):
