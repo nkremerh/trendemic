@@ -78,7 +78,7 @@ class GUI:
             self.nodes[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
             i += 1
             j += 1
-        self.doRunLayout()
+        self.doForceDirectedLayout()
         self.drawEdges()
 
     def configureGraphNames(self):
@@ -135,11 +135,11 @@ class GUI:
                         break
                 if sinkAgent == None:
                     continue
-                aX, aY = self.findMidpoint(source["object"])
-                bX, bY = self.findMidpoint(sink["object"])
-                dx = bX - aX
-                dy = bY - aY
-                attraction = attractiveForce * (math.sqrt((dx**2) + (dx**2)))
+                (aX, aY) = self.findMidpoint(source["object"])
+                (bX, bY) = self.findMidpoint(sink["object"])
+                dX = bX - aX
+                dY = bY - aY
+                attraction = attractiveForce * (math.sqrt((dX**2) + (dY**2)))
                 theta = math.atan2((bY - aY), (bX - aX))
                 attractionA = ((attraction * math.cos(theta)), (attraction * math.sin(theta)))
                 attractionB = (((-1 * attraction) * math.cos(theta)), ((-1 * attraction) * math.sin(theta)))
@@ -177,6 +177,12 @@ class GUI:
 
     def doEditingMenu(self):
         self.doTimestep()
+    
+    def doForceDirectedLayout(self, steps=50):
+        for i in range(steps):
+            self.doRepulsion()
+            self.doAttraction()
+            self.window.update_idletasks()
 
     def doPlayButton(self, *args):
         self.trendemic.toggleRun()
@@ -196,15 +202,15 @@ class GUI:
             for sink in self.nodes:
                 if source in traversed:
                     continue
-                aX, aY = self.findMidpoint(source["object"])
-                bX, bY = self.findMidpoint(sink["object"])
-                dx = bX - aX
-                dy = bY - aY
-                repulsionDenominator = math.sqrt(dx**2 + dy**2)
+                (aX, aY) = self.findMidpoint(source["object"])
+                (bX, bY) = self.findMidpoint(sink["object"])
+                dX = bX - aX
+                dY = bY - aY
+                repulsionDenominator = math.sqrt(dX**2 + dY**2)
                 if repulsionDenominator < 1e-2:
                     repulsionDenominator = 1e-2
                 repulsion = repulsiveForce / repulsionDenominator if repulsionDenominator > 0 else 0
-                theta = math.atan2(dy, dx) #atan2 is better
+                theta = math.atan2(dY, dX) #atan2 is better
                 repulsionA = (((-1 * repulsion) * math.cos(theta)), ((-1 * repulsion) * math.sin(theta)))
                 repulsionB = ((repulsion * math.cos(theta)), (repulsion * math.sin(theta)))
                 source["deltaX"] += repulsionA[0] #modification -> summate instead of overwrite
@@ -242,15 +248,7 @@ class GUI:
                 self.canvas.itemconfig(agent["object"], fill=fillColor)
             agent["color"] = fillColor
         self.updateLabels()
-        #self.doRepulsion()
-        #self.doAttraction()
         self.window.update()
-
-    def doRunLayout(self, steps=50):
-        for _ in range(steps):
-            self.doRepulsion()
-            self.doAttraction()
-            self.window.update_idletasks()
 
     def doWindowClose(self, *args):
         self.stopSimulation = True
