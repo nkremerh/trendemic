@@ -207,13 +207,14 @@ class GUI:
                 dX = bX - aX
                 dY = bY - aY
                 repulsionDenominator = math.sqrt(dX**2 + dY**2)
-                if repulsionDenominator < 1e-2:
-                    repulsionDenominator = 1e-2
-                repulsion = repulsiveForce / repulsionDenominator if repulsionDenominator > 0 else 0
-                theta = math.atan2(dY, dX) #atan2 is better
+                # Prevent incredibly small denominators
+                if repulsionDenominator < 0.01:
+                    repulsionDenominator = 0.01
+                repulsion = repulsiveForce / repulsionDenominator
+                theta = math.atan2(dY, dX)
                 repulsionA = (((-1 * repulsion) * math.cos(theta)), ((-1 * repulsion) * math.sin(theta)))
                 repulsionB = ((repulsion * math.cos(theta)), (repulsion * math.sin(theta)))
-                source["deltaX"] += repulsionA[0] #modification -> summate instead of overwrite
+                source["deltaX"] += repulsionA[0]
                 source["deltaY"] += repulsionA[1]
                 sink["deltaX"] += repulsionB[0]
                 sink["deltaY"] += repulsionB[1]
