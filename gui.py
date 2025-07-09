@@ -192,7 +192,7 @@ class GUI:
         traversed = []
         repulsiveForce = 10
 
-        #set initial values for node's delta values
+        # Set initial values for node's delta values
         for node in self.nodes:
             node["deltaX"] = 0
             node["deltaY"] = 0
@@ -276,7 +276,7 @@ class GUI:
             deltaX = node["deltaX"] if "deltaX" in node else 0
             deltaY = node["deltaY"] if "deltaY" in node else 0
             nodeObject = node["object"]
-            damping = 0.88 #added a damping feature to avoid explosions
+            damping = 0.88
             deltaX *= damping
             deltaY *= damping
             maxStep = 5
