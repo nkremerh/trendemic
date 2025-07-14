@@ -1,6 +1,9 @@
 import math
 import tkinter
 
+REPULSIVE_FORCE = 10
+ATTRACTIVE_FORCE = 0.00003
+
 class GUI:
     def __init__(self, trendemic, screenHeight=1000, screenWidth=900):
         self.trendemic = trendemic
@@ -64,6 +67,7 @@ class GUI:
         return ["Add Agent"]
 
     def configureGraph(self):
+        self.showLoadingScreen()
         i = 1
         j = 1
         # Setup initial radial dispersion of nodes for force-directed layout
@@ -71,14 +75,23 @@ class GUI:
             stepX = math.cos(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
             stepY = math.sin(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
             fillColor = self.lookupFillColor(agent)
-            x1 = stepX * self.siteWidth * 5 + (self.screenWidth / 2)
-            y1 = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
-            x2 = x1 + self.siteWidth
-            y2 = y1 + self.siteHeight
-            self.nodes[agent.ID] = {"object": self.canvas.create_oval(x1, y1, x2, y2, fill=fillColor, outline="#c0c0c0", activestipple="gray50"), "agent": agent, "color": fillColor}
+            x = stepX * self.siteWidth * 5 + (self.screenWidth / 2)
+            y = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
+            self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor}
             i += 1
             j += 1
+        
         self.doForceDirectedLayout()
+
+        for node in self.nodes:
+            x = node["x"]
+            y = node["y"]
+            x1 = x
+            y1 = y
+            x2 = x + self.siteWidth
+            y2 = y + self.siteHeight
+            node["object"] = self.canvas.create_oval(x1, y1, x2, y2, fill=node["color"], outline="#c0c0c0", activestipple="gray50")
+        self.hideLoadingScreen()
         self.drawEdges()
 
     def configureGraphNames(self):
@@ -106,7 +119,7 @@ class GUI:
         self.configureCanvas()
 
         self.updateSiteDimensions()
-        self.configureGraph()
+        self.delayGraphSetup()
 
         self.window.protocol("WM_DELETE_WINDOW", self.doWindowClose)
         self.window.bind("<Escape>", self.doWindowClose)
@@ -116,12 +129,15 @@ class GUI:
 
         self.doCrossPlatformWindowSizing()
 
+    def delayGraphSetup(self):
+        self.window.after(20, self.configureGraph)  
+
     def destroyCanvas(self):
         self.canvas.destroy()
 
     def doAttraction(self):
         traversed = []
-        attractiveForce = 0.00003
+        attractiveForce = ATTRACTIVE_FORCE
         for source in self.nodes:
             for sink in self.nodes:
                 if source in traversed:
@@ -134,8 +150,8 @@ class GUI:
                         break
                 if sinkAgent == None:
                     continue
-                (aX, aY) = self.findMidpoint(source["object"])
-                (bX, bY) = self.findMidpoint(sink["object"])
+                (aX, aY) = self.findMidpoint(source)
+                (bX, bY) = self.findMidpoint(sink)
                 dX = bX - aX
                 dY = bY - aY
                 attraction = attractiveForce * (math.sqrt((dX**2) + (dY**2)))
@@ -147,7 +163,11 @@ class GUI:
                 sink["deltaX"] += attractionB[0]
                 sink["deltaY"] += attractionB[1]
             traversed.append(source)
-        self.drawGraph()
+        for node in self.nodes:
+            damping = 0.88
+            maxStep = 5
+            node["x"] += max(min(node["deltaX"] * damping, maxStep), -maxStep)
+            node["y"] += max(min(node["deltaY"] * damping, maxStep), -maxStep)
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -181,7 +201,6 @@ class GUI:
         for i in range(steps):
             self.doRepulsion()
             self.doAttraction()
-            self.window.update_idletasks()
 
     def doPlayButton(self, *args):
         self.trendemic.toggleRun()
@@ -190,7 +209,7 @@ class GUI:
 
     def doRepulsion(self):
         traversed = []
-        repulsiveForce = 10
+        repulsiveForce = REPULSIVE_FORCE
 
         # Set initial values for node's delta values
         for node in self.nodes:
@@ -201,8 +220,8 @@ class GUI:
             for sink in self.nodes:
                 if source in traversed:
                     continue
-                (aX, aY) = self.findMidpoint(source["object"])
-                (bX, bY) = self.findMidpoint(sink["object"])
+                (aX, aY) = self.findMidpoint(source)
+                (bX, bY) = self.findMidpoint(sink)
                 dX = bX - aX
                 dY = bY - aY
                 repulsionDenominator = math.sqrt(dX**2 + dY**2)
@@ -218,7 +237,11 @@ class GUI:
                 sink["deltaX"] += repulsionB[0]
                 sink["deltaY"] += repulsionB[1]
             traversed.append(source)
-        self.drawGraph()
+        for node in self.nodes:
+            damping = 0.88
+            maxStep = 5
+            node["x"] += max(min(node["deltaX"] * damping, maxStep), -maxStep)
+            node["y"] += max(min(node["deltaY"] * damping, maxStep), -maxStep)
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
@@ -259,41 +282,31 @@ class GUI:
         for edge in self.edges:
             self.canvas.delete(edge)
         for agent in self.trendemic.agents:
-            agentNode = self.nodes[agent.ID]["object"]
+            agentNode = self.nodes[agent.ID]
             agentMidpoint = self.findMidpoint(agentNode)
             agentX = agentMidpoint[0]
             agentY = agentMidpoint[1]
             for n in range(len(agent.neighbors)):
-                neighborNode = self.nodes[n]["object"]
+                neighborNode = self.nodes[n]
                 neighborMidpoint = self.findMidpoint(neighborNode)
                 neighborX = neighborMidpoint[0]
                 neighborY = neighborMidpoint[1]
                 edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
                 self.edges.append(edge)
 
-    def drawGraph(self):
-        for node in self.nodes:
-            deltaX = node["deltaX"] if "deltaX" in node else 0
-            deltaY = node["deltaY"] if "deltaY" in node else 0
-            nodeObject = node["object"]
-            damping = 0.88
-            deltaX *= damping
-            deltaY *= damping
-            maxStep = 5
-            deltaX = max(min(deltaX, maxStep), -1 * maxStep)
-            deltaY = max(min(deltaY, maxStep), -1 * maxStep)
-            self.canvas.move(nodeObject, deltaX, deltaY)
-        self.drawEdges()
-
-    def findMidpoint(self, canvasObject):
-        coords = self.canvas.coords(canvasObject)
-        height = coords[1] - coords[3]
-        width = coords[2] - coords[0]
-        x = coords[0]
-        y = coords[1]
+    def findMidpoint(self, node):
+        x = node["x"]
+        y = node["y"]
+        width = self.siteWidth
+        height = self.siteHeight
         midpointX = x + (width / 2)
-        midpointY = y - (height / 2)
+        midpointY = y + (height / 2)
         return (midpointX, midpointY)
+
+    def hideLoadingScreen(self):
+        self.loadingLabel.destroy()
+        self.canvas.grid()  
+        self.window.update_idletasks()
 
     def lookupFillColor(self, agent):
         if agent == None:
@@ -310,6 +323,12 @@ class GUI:
         self.destroyCanvas()
         self.configureCanvas()
         self.configureGraph()
+    
+    def showLoadingScreen(self):
+        self.loadingLabel = tkinter.Label(self.window, text="Loading...", font=("Roboto", 14))
+        self.loadingLabel.grid(row=3, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
+        self.canvas.grid_remove() 
+        self.window.update_idletasks()
 
     def updateLabels(self):
         self.trendemic.updateRuntimeStats()
