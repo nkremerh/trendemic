@@ -22,31 +22,20 @@ class Trendemic:
         self.debug = configuration["debugMode"]
         self.keepAlive = configuration["keepAlivePostExtinction"]
         self.networkType = configuration["networkType"]
+
         self.agentEndowmentIndex = 0
         self.agentEndowments = []
-        
         self.agents = []
+        self.end = False # Simulation end flag
+        self.log = None
+        self.logFormat = configuration["logfileFormat"]
+        self.run = False # Simulation start flag
+        self.runtimeStats = {}
 
         self.configureAgents(configuration["numAgents"])
+        self.configureInfluencers()
+        self.configureLog()
         self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
-        self.run = False # Simulation start flag
-        self.end = False # Simulation end flag
-        self.runtimeStats = {"timestep": 0, "population": 0
-                             }
-        self.graphStats = {"ageBins": [], "sugarBins": [], "spiceBins": [], "lorenzCurvePoints": [], "meanTribeTags": [],
-                           "maxSugar": 0, "maxSpice": 0, "maxWealth": 0}
-        self.log = open(configuration["logfile"], 'a') if configuration["logfile"] != None else None
-        self.logFormat = configuration["logfileFormat"]
-        self.experimentalGroup = configuration["experimentalGroup"]
-        if self.experimentalGroup != None:
-            # Convert keys to Pythonic case scheme and initialize values
-            groupRuntimeStats = {}
-            for key in self.runtimeStats.keys():
-                controlGroupKey = "control" + key[0].upper() + key[1:]
-                experimentalGroupKey = self.experimentalGroup + key[0].upper() + key[1:]
-                groupRuntimeStats[controlGroupKey] = 0
-                groupRuntimeStats[experimentalGroupKey] = 0
-            self.runtimeStats.update(groupRuntimeStats)
 
     def configureAgents(self, numAgents, editCell=None):
         # Ensure agent endowments are randomized across initial agent count to make replacements follow same distributions
@@ -60,7 +49,7 @@ class Trendemic:
             a = agent.Agent(agentID, self.timestep, agentConfiguration, self)
             self.agents.append(a)
 
-        numNeighbors = 3
+        numNeighbors = random.randint(1, 3)
         for a in self.agents:
             for i in range(numNeighbors):
                 neighborID = random.randint(0, len(self.agents) - 1)
@@ -72,6 +61,23 @@ class Trendemic:
                     if a not in neighbor.neighbors:
                         neighbor.neighbors.append(a)
             a.localNeighbors = a.neighbors
+
+    def configureLog(self):
+        self.runtimeStats = {"timestep": 0, "population": len(self.agents)}
+        self.log = open(self.configuration["logfile"], 'a') if self.configuration["logfile"] != None else None
+        self.experimentalGroup = self.configuration["experimentalGroup"]
+        if self.experimentalGroup != None:
+            # Convert keys to Pythonic case scheme and initialize values
+            groupRuntimeStats = {}
+            for key in self.runtimeStats.keys():
+                controlGroupKey = "control" + key[0].upper() + key[1:]
+                experimentalGroupKey = self.experimentalGroup + key[0].upper() + key[1:]
+                groupRuntimeStats[controlGroupKey] = 0
+                groupRuntimeStats[experimentalGroupKey] = 0
+            self.runtimeStats.update(groupRuntimeStats)
+
+    def configureInfluencers(self):
+        return
 
     def doTimestep(self):
         if self.timestep >= self.maxTimestep:
@@ -134,7 +140,6 @@ class Trendemic:
 
     def randomizeAgentEndowments(self, numAgents):
         configs = self.configuration
-        behaviorModels = configs["agentBehaviorModels"]
         globalWeight = configs["agentGlobalWeight"]
         localWeight = configs["agentLocalWeight"]
         threshold = configs["agentThreshold"]
@@ -170,7 +175,6 @@ class Trendemic:
             configurations[config]["decimals"] = decimals
 
         numInfluencers = configs["numInfluencers"]
-        behaviorModels = []
         influencers = []
         for i in range(numAgents):
             for config in configurations.values():
@@ -179,8 +183,6 @@ class Trendemic:
                 config["curr"] = round(config["curr"], config["decimals"])
                 if config["curr"] > config["max"]:
                     config["curr"] = config["min"]
-            behaviorModel = configs["agentBehaviorModels"][i % len(configs["agentBehaviorModels"])]
-            behaviorModels.append(behaviorModel)
             if numInfluencers > 0:
                 influencers.append(True)
                 numInfluencers -= 1
@@ -194,11 +196,10 @@ class Trendemic:
             random.seed(self.agentConfigHashes[config] + self.timestep)
             random.shuffle(configurations[config]["endowments"])
         random.setstate(randomNumberReset)
-        random.shuffle(behaviorModels)
         random.shuffle(influencers)
 
         for i in range(numAgents):
-            agentEndowment = {"seed": self.seed, "behaviorModel": behaviorModels.pop(), "influencer": influencers.pop()
+            agentEndowment = {"seed": self.seed, "influencer": influencers.pop()
                               }
             for config in configurations:
                 agentEndowment[config] = configurations[config]["endowments"].pop()
@@ -402,6 +403,11 @@ def verifyConfiguration(configuration):
     if negativeFlag > 0:
         print(f"Detected negative values provided for {negativeFlag} option(s). Setting these values to zero.")
 
+    if configuration["numInfluencers"] > configuration["numAgents"]:
+        configuration["numInfluencers"] = configuration["numAgents"]
+        if "all" in configuration["debugMode"] or "agent" in configuration["debugMode"]:
+            print("Cannot have more influencers than agents. Setting number of influencers to number of agents.")
+
     # Set timesteps to (seemingly) unlimited runtime
     if configuration["timesteps"] < 0:
         if "all" in configuration["debugMode"] or "agent" in configuration["debugMode"]:
@@ -443,13 +449,14 @@ def verifyConfiguration(configuration):
 
 if __name__ == "__main__":
     # Set default values for simulation configuration
-    configuration = {"agentBehaviorModels": ["inky"],
+    configuration = {
                      "agentGlobalWeight": [0.0, 0.0],
                      "agentLocalWeight": [1.0, 1.0],
                      "agentThreshold": [0.2, 0.2],
                      "debugMode": ["none"],
                      "experimentalGroup": None,
                      "headlessMode": True,
+                     "influenceBehaviorModel": ["inky"],
                      "interfaceHeight": 1000,
                      "interfaceWidth": 900,
                      "keepAliveAtEnd": False,
@@ -468,7 +475,6 @@ if __name__ == "__main__":
     k = 2
     p = 3
     m = 4
-    initial_influencers_fraction = 0.1
     network_type = "hybrid"
     sweep_parameter = "threshold"
     sweep_start = 0.2
@@ -477,19 +483,13 @@ if __name__ == "__main__":
     num_trials = 10
     tipping_fraction = 0.75
 
-    threshold_distribution = "uniform"
-    threshold_mean = 0.2
-    threshold_std = 0.05
     sweep_enabled = True
     evaluation_mode = "tipping_threshold"
  
-    moreConfigs = {"initial_influencers_fraction": initial_influencers_fraction,
+    moreConfigs = {
                    "k": k,
                    "p": p,
                    "m": m,
-                   "threshold_distribution": threshold_distribution,
-                   "threshold_mean": threshold_mean,
-                   "threshold_std": threshold_std,
                    "social_engineer_enabled": False,
                    "seeding_strategy": None,
                    }

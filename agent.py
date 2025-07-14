@@ -11,7 +11,6 @@ class Agent:
         self.debug = trendemic.debug
         self.trendemic = trendemic
 
-        self.behaviorModel = configuration["behaviorModel"]
         self.globalWeight = configuration["globalWeight"]
         self.influencer = configuration["influencer"]
         self.localWeight = configuration["localWeight"]
@@ -69,4 +68,4 @@ class Agent:
         return
 
     def __str__(self):
-        return f"{self.ID}: Behavior: {self.behaviorModel}, Influencer: {self.influencer}, Neighbors: {self.neighbors}"
+        return f"{self.ID}: Influencer: {self.influencer}, Neighbors: {self.neighbors}"
