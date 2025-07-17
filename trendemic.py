@@ -54,7 +54,7 @@ class Trendemic:
         if len(self.agents) == 0:
             self.configureAgents(self.configuration["numAgents"])
         if "smallWorld" in self.networkTypes:
-            numNeighborsPerSide = math.floor(self.configuration["smallWorldEdgesPerAgent"] / 2)
+            numNeighborsPerSide = math.ceil(self.configuration["smallWorldEdgesPerAgent"] / 2)
             for i in range(len(self.agents)):
                 agent = self.agents[i]
                 for j in range(-1 * numNeighborsPerSide, numNeighborsPerSide + 1):
@@ -64,6 +64,12 @@ class Trendemic:
                     # Handle positive indices going off the end
                     if index > len(self.agents) - 1:
                         index = index % len(self.agents)
+                    rewireChance = random.uniform(0.0, 1.0)
+                    if rewireChance <= self.configuration["smallWorldRewiringProbability"]:
+                        newIndex = random.randrange(0, len(self.agents))
+                        while newIndex == index or newIndex == i:
+                            newIndex = random.randrange(0, len(self.agents))
+                        index = newIndex
                     neighbor = self.agents[index]
                     if neighbor == self or neighbor in agent.smallWorldNeighbors:
                         continue
@@ -486,6 +492,7 @@ if __name__ == "__main__":
                      "screenshots": False,
                      "seed": -1,
                      "smallWorldEdgesPerAgent": 2,
+                     "smallWorldRewiringProbability": 0.0,
                      "threshold": 0.2,
                      "timesteps": 200
                      }

@@ -29,6 +29,7 @@
         "screenshots": false,
         "seed": -1,
         "smallWorldEdgesPerAgent": 2,
+        "smallWorldRewiringProbability": 0.2,
         "timesteps": 10
     }
 }
