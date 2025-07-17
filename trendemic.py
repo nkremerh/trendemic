@@ -21,7 +21,7 @@ class Trendemic:
         self.seed = configuration["seed"]
         self.debug = configuration["debugMode"]
         self.keepAlive = configuration["keepAlivePostExtinction"]
-        self.networkType = configuration["networkType"]
+        self.networkTypes = configuration["networkTypes"]
 
         self.agentEndowmentIndex = 0
         self.agentEndowments = []
@@ -33,6 +33,7 @@ class Trendemic:
         self.runtimeStats = {}
 
         self.configureAgents(configuration["numAgents"])
+        self.configureGraph()
         self.configureInfluencers()
         self.configureLog()
         self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
@@ -49,18 +50,28 @@ class Trendemic:
             a = agent.Agent(agentID, self.timestep, agentConfiguration, self)
             self.agents.append(a)
 
-        numNeighbors = random.randint(1, 3)
-        for a in self.agents:
-            for i in range(numNeighbors):
-                neighborID = random.randint(0, len(self.agents) - 1)
-                neighbor = self.agents[neighborID]
-                if neighbor == self or neighbor in a.neighbors:
-                    continue
-                else:
-                    a.neighbors.append(neighbor)
-                    if a not in neighbor.neighbors:
-                        neighbor.neighbors.append(a)
-            a.localNeighbors = a.neighbors
+    def configureGraph(self):
+        if len(self.agents) == 0:
+            self.configureAgents(self.configuration["numAgents"])
+        if "smallWorld" in self.networkTypes:
+            numNeighborsPerSide = math.floor(self.configuration["smallWorldEdgesPerAgent"] / 2)
+            for i in range(len(self.agents)):
+                agent = self.agents[i]
+                for j in range(-1 * numNeighborsPerSide, numNeighborsPerSide + 1):
+                    index = i + j
+                    if index == i:
+                        continue
+                    # Handle positive indices going off the end
+                    if index > len(self.agents) - 1:
+                        index = index % len(self.agents)
+                    neighbor = self.agents[index]
+                    if neighbor == self or neighbor in agent.smallWorldNeighbors:
+                        continue
+                    else:
+                        agent.smallWorldNeighbors.append(neighbor)
+        # After configuring edges, ensure unique list of all neighbors
+        for agent in self.agents:
+            agent.neighbors = list(set(agent.smallWorldNeighbors + agent.scaleFreeNeighbors))
 
     def configureLog(self):
         self.runtimeStats = {"timestep": 0, "population": len(self.agents)}
@@ -140,11 +151,11 @@ class Trendemic:
 
     def randomizeAgentEndowments(self, numAgents):
         configs = self.configuration
-        globalWeight = configs["agentGlobalWeight"]
-        localWeight = configs["agentLocalWeight"]
+        scaleFreeWeight = configs["agentScaleFreeWeight"]
+        smallWorldWeight = configs["agentSmallWorldWeight"]
         threshold = configs["agentThreshold"]
-        configurations = {"globalWeight": {"endowments": [], "curr": globalWeight[0], "min": globalWeight[0], "max": globalWeight[1]},
-                          "localWeight": {"endowments": [], "curr": localWeight[0], "min": localWeight[0], "max": localWeight[1]},
+        configurations = {"scaleFreeWeight": {"endowments": [], "curr": scaleFreeWeight[0], "min": scaleFreeWeight[0], "max": scaleFreeWeight[1]},
+                          "smallWorldWeight": {"endowments": [], "curr": smallWorldWeight[0], "min": smallWorldWeight[0], "max": smallWorldWeight[1]},
                           "threshold": {"endowments": [], "curr": threshold[0], "min": threshold[0], "max": threshold[1]}
                           }
 
@@ -408,6 +419,11 @@ def verifyConfiguration(configuration):
         if "all" in configuration["debugMode"] or "agent" in configuration["debugMode"]:
             print("Cannot have more influencers than agents. Setting number of influencers to number of agents.")
 
+    if configuration["smallWorldEdgesPerAgent"] > configuration["numAgents"]:
+        configuration["smallWorldEdgesPerAgent"] = configuration["numAgents"]
+        if "all" in configuration["debugMode"] or "agent" in configuration["debugMode"]:
+            print("Cannot have more Small World graph edges than agents. Setting number of edges to number of agents.")
+
     # Set timesteps to (seemingly) unlimited runtime
     if configuration["timesteps"] < 0:
         if "all" in configuration["debugMode"] or "agent" in configuration["debugMode"]:
@@ -450,8 +466,8 @@ def verifyConfiguration(configuration):
 if __name__ == "__main__":
     # Set default values for simulation configuration
     configuration = {
-                     "agentGlobalWeight": [0.0, 0.0],
-                     "agentLocalWeight": [1.0, 1.0],
+                     "agentScaleFreeWeight": [0.0, 0.0],
+                     "agentSmallWorldWeight": [1.0, 1.0],
                      "agentThreshold": [0.2, 0.2],
                      "debugMode": ["none"],
                      "experimentalGroup": None,
@@ -463,16 +479,16 @@ if __name__ == "__main__":
                      "keepAlivePostExtinction": False,
                      "logfile": None,
                      "logfileFormat": "json",
-                     "networkType": "local",
+                     "networkTypes": ["smallWorld"],
                      "numAgents": 10,
                      "numInfluencers": 1,
                      "profileMode": False,
                      "screenshots": False,
                      "seed": -1,
+                     "smallWorldEdgesPerAgent": 2,
                      "threshold": 0.2,
                      "timesteps": 200
                      }
-    k = 2
     p = 3
     m = 4
     network_type = "hybrid"
@@ -487,7 +503,6 @@ if __name__ == "__main__":
     evaluation_mode = "tipping_threshold"
  
     moreConfigs = {
-                   "k": k,
                    "p": p,
                    "m": m,
                    "social_engineer_enabled": False,

@@ -11,6 +11,7 @@
     },
     "trendemicOptions": {
         "__README__": "Default values for Trendemic simulation provided here. Details can be found in the README.",
+        "agentSmallWorldWeight": [1.0, 1.0],
         "agentThreshold": [0.2, 0.2],
         "debugMode": ["all"],
         "experimentalGroup": null,
@@ -21,11 +22,13 @@
         "keepAliveAtEnd": false,
         "logfile": "log.json",
         "logfileFormat": "json",
+        "networkTypes": ["smallWorld"],
         "numAgents": 20,
         "numInfluencers": 3,
         "profileMode": false,
         "screenshots": false,
         "seed": -1,
+        "smallWorldEdgesPerAgent": 2,
         "timesteps": 10
     }
 }

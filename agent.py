@@ -11,38 +11,41 @@ class Agent:
         self.debug = trendemic.debug
         self.trendemic = trendemic
 
-        self.globalWeight = configuration["globalWeight"]
+        self.scaleFreeWeight = configuration["scaleFreeWeight"]
         self.influencer = configuration["influencer"]
-        self.localWeight = configuration["localWeight"]
+        self.smallWorldWeight = configuration["smallWorldWeight"]
         self.threshold = configuration["threshold"]
 
         self.influenced = True if self.influencer == True else False
         self.nextInfluenced = False
         self.age = 0
         self.neighbors = []
-        self.globalNeighbors = []
-        self.localNeighbors = []
+        self.scaleFreeNeighbors = []
+        self.smallWorldNeighbors = []
 
     def doInfluence(self):
         if len(self.neighbors) == 0:
             return
         fractionInfluenced = 0
-        globalFractionInfluenced = 0
-        localFractionInfluenced = 0
+        scaleFreeFractionInfluenced = 0
+        smallWorldFractionInfluenced = 0
         for neighbor in self.neighbors:
             if neighbor.influenced == True:
                 fractionInfluenced += 1
-                if neighbor in self.globalNeighbors:
-                    globalFractionInfluenced += 1
-                if neighbor in self.localNeighbors:
-                    localFractionInfluenced += 1
+                if neighbor in self.scaleFreeNeighbors:
+                    scaleFreeFractionInfluenced += 1
+                if neighbor in self.smallWorldNeighbors:
+                    smallWorldFractionInfluenced += 1
 
         fractionInfluenced = fractionInfluenced / len(self.neighbors)
-        globalFractionInfluenced = globalFractionInfluenced / len(self.globalNeighbors) if len(self.globalNeighbors) > 0 else 0
-        localFractionInfluenced = localFractionInfluenced / len(self.localNeighbors) if len(self.localNeighbors) > 0 else 0
-        influenceThreshold = fractionInfluenced
-        if self.trendemic.networkType == "hybrid":
-            influencedThreshold = (self.globalWeight * globalFractionInfluenced) + (self.localWeight * localFractionInfluenced)
+        scaleFreeFractionInfluenced = scaleFreeFractionInfluenced / len(self.scaleFreeNeighbors) if len(self.scaleFreeNeighbors) > 0 else 0
+        smallWorldFractionInfluenced = smallWorldFractionInfluenced / len(self.smallWorldNeighbors) if len(self.smallWorldNeighbors) > 0 else 0
+        influencedThreshold = fractionInfluenced
+        influencedThreshold = 0
+        if "smallWorld" in self.trendemic.networkTypes:
+            influencedThreshold += self.smallWorldWeight * smallWorldFractionInfluenced
+        if "scaleFree" in self.trendemic.networkTypes:
+            influencedThreshold += self.scaleFreeWeight * scaleFreeFractionInfluenced
 
         # If enough neighbors are influenced, guarantee agent is influenced next timestep
         if fractionInfluenced >= self.threshold:

@@ -283,8 +283,8 @@ class GUI:
             agentMidpoint = self.findMidpoint(agentNode)
             agentX = agentMidpoint[0]
             agentY = agentMidpoint[1]
-            for n in range(len(agent.neighbors)):
-                neighborNode = self.nodes[n]
+            for neighbor in agent.neighbors:
+                neighborNode = self.nodes[neighbor.ID]
                 neighborMidpoint = self.findMidpoint(neighborNode)
                 neighborX = neighborMidpoint[0]
                 neighborY = neighborMidpoint[1]
