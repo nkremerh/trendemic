@@ -1,8 +1,10 @@
 import math
 import tkinter
 
-REPULSIVE_FORCE = 10
 ATTRACTIVE_FORCE = 0.00003
+FORCE_DIRECTED_DAMPING = 0.88
+FORCE_DIRECTED_LAYOUT_ROUNDS = 20
+REPULSIVE_FORCE = 10
 
 class GUI:
     def __init__(self, trendemic, screenHeight=1000, screenWidth=900):
@@ -69,7 +71,6 @@ class GUI:
     def configureGraph(self):
         self.showLoadingScreen()
         i = 1
-        j = 1
         # Setup initial radial dispersion of nodes for force-directed layout
         for agent in self.trendemic.agents:
             stepX = math.cos(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
@@ -79,9 +80,8 @@ class GUI:
             y = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
             self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor}
             i += 1
-            j += 1
-        
-        self.doForceDirectedLayout()
+
+        self.doForceDirection()
 
         for node in self.nodes:
             x = node["x"]
@@ -119,7 +119,7 @@ class GUI:
         self.configureCanvas()
 
         self.updateSiteDimensions()
-        self.delayGraphSetup()
+        self.doForceDirectedLayout()
 
         self.window.protocol("WM_DELETE_WINDOW", self.doWindowClose)
         self.window.bind("<Escape>", self.doWindowClose)
@@ -128,9 +128,6 @@ class GUI:
         self.window.bind("<Configure>", self.doResize)
 
         self.doCrossPlatformWindowSizing()
-
-    def delayGraphSetup(self):
-        self.window.after(20, self.configureGraph)  
 
     def destroyCanvas(self):
         self.canvas.destroy()
@@ -164,10 +161,9 @@ class GUI:
                 sink["deltaY"] += attractionB[1]
             traversed.append(source)
         for node in self.nodes:
-            damping = 0.88
             maxStep = 5
-            node["x"] += max(min(node["deltaX"] * damping, maxStep), -maxStep)
-            node["y"] += max(min(node["deltaY"] * damping, maxStep), -maxStep)
+            node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -196,8 +192,11 @@ class GUI:
 
     def doEditingMenu(self):
         self.doTimestep()
-    
-    def doForceDirectedLayout(self, steps=50):
+
+    def doForceDirectedLayout(self):
+        self.window.after(FORCE_DIRECTED_LAYOUT_ROUNDS, self.configureGraph)
+
+    def doForceDirection(self, steps=50):
         for i in range(steps):
             self.doRepulsion()
             self.doAttraction()
@@ -238,16 +237,14 @@ class GUI:
                 sink["deltaY"] += repulsionB[1]
             traversed.append(source)
         for node in self.nodes:
-            damping = 0.88
             maxStep = 5
-            node["x"] += max(min(node["deltaX"] * damping, maxStep), -maxStep)
-            node["y"] += max(min(node["deltaY"] * damping, maxStep), -maxStep)
+            node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
         if event != None and (event.widget != self.window or (self.screenHeight == event.height and self.screenWidth == event.width)):
             return
-
         if self.resizeID != None:
             self.window.after_cancel(self.resizeID)
         pollingInterval = 10
@@ -325,7 +322,7 @@ class GUI:
         self.configureGraph()
     
     def showLoadingScreen(self):
-        self.loadingLabel = tkinter.Label(self.window, text="Loading...", font=("Roboto", 14))
+        self.loadingLabel = tkinter.Label(self.window, text="Drawing graph, please wait...", font=("Roboto", 14))
         self.loadingLabel.grid(row=3, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
         self.canvas.grid_remove() 
         self.window.update_idletasks()
