@@ -3,7 +3,8 @@ import tkinter
 
 ATTRACTIVE_FORCE = 0.00003
 FORCE_DIRECTED_DAMPING = 0.88
-FORCE_DIRECTED_LAYOUT_ROUNDS = 20
+FORCE_DIRECTED_LAYOUT_ROUNDS = 50
+LOADING_SCREEN_DELAY = 100
 REPULSIVE_FORCE = 10
 
 class GUI:
@@ -194,9 +195,9 @@ class GUI:
         self.doTimestep()
 
     def doForceDirectedLayout(self):
-        self.window.after(FORCE_DIRECTED_LAYOUT_ROUNDS, self.configureGraph)
+        self.window.after(LOADING_SCREEN_DELAY, self.configureGraph)
 
-    def doForceDirection(self, steps=50):
+    def doForceDirection(self, steps=FORCE_DIRECTED_LAYOUT_ROUNDS):
         for i in range(steps):
             self.doRepulsion()
             self.doAttraction()
