@@ -53,6 +53,35 @@ class Trendemic:
     def configureGraph(self):
         if len(self.agents) == 0:
             self.configureAgents(self.configuration["numAgents"])
+        if "scaleFree" in self.networkTypes:
+            nodeDegrees = 0
+            for i in range(self.configuration["scaleFreeHubs"]):
+                for agent in self.agents:
+                    if agent == self.agents[i] or agent in self.agents[i].scaleFreeNeighbors:
+                        continue
+                    self.agents[i].scaleFreeNeighbors.append(agent)
+                    nodeDegrees += 1
+            # Node has a probability of forming an edge with any other node depending on its degree
+            # The probability that new node D connects with existing node A depends on the degree (how many edges) of A
+            # P(edge with A) = Degree(A)/(sum of degrees of all the nodes)
+            for j in range(self.configuration["scaleFreeHubs"], len(self.agents)):
+                agent = self.agents[j]
+                potentialNeighbors = self.agents[:]
+                random.shuffle(potentialNeighbors)
+                for k in range(self.configuration["scaleFreeEdgesPerAgent"]):
+                    neighbor = self.agents[k]
+                    if agent == neighbor or neighbor in agent.scaleFreeNeighbors:
+                        continue
+                    agent.scaleFreeNeighbors.append(neighbor)
+                    nodeDegrees += 1
+                for neighbor in potentialNeighbors:
+                    if agent == neighbor or neighbor in agent.scaleFreeNeighbors:
+                        continue
+                    probabilityForNeighboring = len(neighbor.scaleFreeNeighbors) / nodeDegrees
+                    neighboringChance = random.uniform(0.0, 1.0)
+                    if neighboringChance <= probabilityForNeighboring:
+                        agent.scaleFreeNeighbors.append(neighbor)
+                        nodeDegrees += 1
         if "smallWorld" in self.networkTypes:
             numNeighborsPerSide = math.ceil(self.configuration["smallWorldEdgesPerAgent"] / 2)
             for i in range(len(self.agents)):
@@ -489,6 +518,8 @@ if __name__ == "__main__":
                      "numAgents": 10,
                      "numInfluencers": 1,
                      "profileMode": False,
+                     "scaleFreeEdgesPerAgent": 2,
+                     "scaleFreeHubs": 3,
                      "screenshots": False,
                      "seed": -1,
                      "smallWorldEdgesPerAgent": 2,
