@@ -61,14 +61,11 @@ class Trendemic:
                         continue
                     self.agents[i].scaleFreeNeighbors.append(agent)
                     nodeDegrees += 1
-            # Node has a probability of forming an edge with any other node depending on its degree
-            # The probability that new node D connects with existing node A depends on the degree (how many edges) of A
-            # P(edge with A) = Degree(A)/(sum of degrees of all the nodes)
             for j in range(self.configuration["scaleFreeHubs"], len(self.agents)):
                 agent = self.agents[j]
                 potentialNeighbors = self.agents[:]
                 random.shuffle(potentialNeighbors)
-                for k in range(self.configuration["scaleFreeEdgesPerAgent"]):
+                for k in range(self.configuration["scaleFreeStartingEdgesPerAgent"]):
                     neighbor = self.agents[k]
                     if agent == neighbor or neighbor in agent.scaleFreeNeighbors:
                         continue
@@ -518,8 +515,8 @@ if __name__ == "__main__":
                      "numAgents": 10,
                      "numInfluencers": 1,
                      "profileMode": False,
-                     "scaleFreeEdgesPerAgent": 2,
                      "scaleFreeHubs": 3,
+                     "scaleFreeStartingEdgesPerAgent": 2,
                      "screenshots": False,
                      "seed": -1,
                      "smallWorldEdgesPerAgent": 2,
@@ -527,9 +524,8 @@ if __name__ == "__main__":
                      "threshold": 0.2,
                      "timesteps": 200
                      }
-    p = 3
-    m = 4
-    network_type = "hybrid"
+
+    '''
     sweep_parameter = "threshold"
     sweep_start = 0.2
     sweep_end = 0.2
@@ -541,11 +537,10 @@ if __name__ == "__main__":
     evaluation_mode = "tipping_threshold"
  
     moreConfigs = {
-                   "p": p,
-                   "m": m,
                    "social_engineer_enabled": False,
                    "seeding_strategy": None,
                    }
+    '''
 
     configuration = parseOptions(configuration)
     configuration = verifyConfiguration(configuration)

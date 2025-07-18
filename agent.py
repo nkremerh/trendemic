@@ -37,15 +37,13 @@ class Agent:
                 if neighbor in self.smallWorldNeighbors:
                     smallWorldFractionInfluenced += 1
 
-        fractionInfluenced = fractionInfluenced / len(self.neighbors)
         scaleFreeFractionInfluenced = scaleFreeFractionInfluenced / len(self.scaleFreeNeighbors) if len(self.scaleFreeNeighbors) > 0 else 0
         smallWorldFractionInfluenced = smallWorldFractionInfluenced / len(self.smallWorldNeighbors) if len(self.smallWorldNeighbors) > 0 else 0
-        influencedThreshold = fractionInfluenced
-        influencedThreshold = 0
+        fractionInfluenced = 0
         if "smallWorld" in self.trendemic.networkTypes:
-            influencedThreshold += self.smallWorldWeight * smallWorldFractionInfluenced
+            fractionInfluenced += self.smallWorldWeight * smallWorldFractionInfluenced
         if "scaleFree" in self.trendemic.networkTypes:
-            influencedThreshold += self.scaleFreeWeight * scaleFreeFractionInfluenced
+            fractionInfluenced += self.scaleFreeWeight * scaleFreeFractionInfluenced
 
         # If enough neighbors are influenced, guarantee agent is influenced next timestep
         if fractionInfluenced >= self.threshold:

@@ -11,7 +11,8 @@
     },
     "trendemicOptions": {
         "__README__": "Default values for Trendemic simulation provided here. Details can be found in the README.",
-        "agentSmallWorldWeight": [1.0, 1.0],
+        "agentScaleFreeWeight": [0.2, 0.2],
+        "agentSmallWorldWeight": [0.8, 0.8],
         "agentThreshold": [0.2, 0.2],
         "debugMode": ["all"],
         "experimentalGroup": null,
@@ -22,16 +23,16 @@
         "keepAliveAtEnd": false,
         "logfile": "log.json",
         "logfileFormat": "json",
-        "networkTypes": ["smallWorld", "scaleFree"],
-        "numAgents": 30,
+        "networkTypes": ["scaleFree", "smallWorld"],
+        "numAgents": 50,
         "numInfluencers": 3,
         "profileMode": false,
-        "scaleFreeEdgesPerAgent": 2,
         "scaleFreeHubs": 3,
+        "scaleFreeStartingEdgesPerAgent": 3,
         "screenshots": false,
         "seed": -1,
         "smallWorldEdgesPerAgent": 2,
         "smallWorldRewiringProbability": 0.2,
-        "timesteps": 10
+        "timesteps": 100
     }
 }
