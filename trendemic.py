@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import agent
-import behavior
+import strategy
 
 import getopt
 import hashlib
@@ -15,35 +15,42 @@ class Trendemic:
     def __init__(self, configuration):
         self.agentConfigHashes = None
         self.configuration = configuration
-        self.maxTimestep = configuration["timesteps"]
-        self.timestep = 0
-        self.nextAgentID = 0
-        self.seed = configuration["seed"]
         self.debug = configuration["debugMode"]
         self.keepAlive = configuration["keepAlivePostExtinction"]
+        self.logFormat = configuration["logfileFormat"]
+        self.maxTimestep = configuration["timesteps"]
         self.networkTypes = configuration["networkTypes"]
+        self.numAgents = configuration["numAgents"]
+        self.numInfluencers = configuration["numInfluencers"]
+        self.seed = configuration["seed"]
+        self.strategy = configuration["strategy"]
 
         self.agentEndowmentIndex = 0
         self.agentEndowments = []
         self.agents = []
-        self.end = False # Simulation end flag
+        # Simulation end flag
+        self.end = False
         self.log = None
-        self.logFormat = configuration["logfileFormat"]
-        self.run = False # Simulation start flag
+        self.nextAgentID = 0
+        # Simulation start flag
+        self.run = False
         self.runtimeStats = {}
+        # TODO: Determine configuration options for seeding strategies
+        self.strategyConfiguration = {}
+        self.timestep = 0
 
-        self.configureAgents(configuration["numAgents"])
+        self.configureAgents()
         self.configureGraph()
-        self.configureInfluencers()
         self.configureLog()
+        self.configureStrategy()
         self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
 
-    def configureAgents(self, numAgents, editCell=None):
+    def configureAgents(self, editCell=None):
         # Ensure agent endowments are randomized across initial agent count to make replacements follow same distributions
         if len(self.agentEndowments) == 0:
-            self.agentEndowments = self.randomizeAgentEndowments(numAgents)
+            self.agentEndowments = self.randomizeAgentEndowments()
 
-        for i in range(numAgents):
+        for i in range(self.numAgents):
             agentConfiguration = self.agentEndowments[self.agentEndowmentIndex % len(self.agentEndowments)]
             self.agentEndowmentIndex += 1
             agentID = self.generateAgentID()
@@ -52,7 +59,7 @@ class Trendemic:
 
     def configureGraph(self):
         if len(self.agents) == 0:
-            self.configureAgents(self.configuration["numAgents"])
+            self.configureAgents()
         if "scaleFree" in self.networkTypes:
             nodeDegrees = 0
             for i in range(self.configuration["scaleFreeHubs"]):
@@ -119,8 +126,10 @@ class Trendemic:
                 groupRuntimeStats[experimentalGroupKey] = 0
             self.runtimeStats.update(groupRuntimeStats)
 
-    def configureInfluencers(self):
-        return
+    def configureStrategy(self):
+        if self.strategy == None:
+            self.strategy = strategy.Strategy(self.strategyConfiguration, self)
+            self.strategy.seedAgents()
 
     def doTimestep(self):
         if self.timestep >= self.maxTimestep:
@@ -181,7 +190,7 @@ class Trendemic:
             if self.end == True:
                 self.endSimulation()
 
-    def randomizeAgentEndowments(self, numAgents):
+    def randomizeAgentEndowments(self):
         configs = self.configuration
         scaleFreeWeight = configs["agentScaleFreeWeight"]
         smallWorldWeight = configs["agentSmallWorldWeight"]
@@ -217,20 +226,13 @@ class Trendemic:
             configurations[config]["inc"] = increment
             configurations[config]["decimals"] = decimals
 
-        numInfluencers = configs["numInfluencers"]
-        influencers = []
-        for i in range(numAgents):
+        for i in range(self.numAgents):
             for config in configurations.values():
                 config["endowments"].append(config["curr"])
                 config["curr"] += config["inc"]
                 config["curr"] = round(config["curr"], config["decimals"])
                 if config["curr"] > config["max"]:
                     config["curr"] = config["min"]
-            if numInfluencers > 0:
-                influencers.append(True)
-                numInfluencers -= 1
-            else:
-                influencers.append(False)
 
         endowments = []
         # Keep state of random numbers to allow extending agent endowments without altering original random object state
@@ -239,11 +241,9 @@ class Trendemic:
             random.seed(self.agentConfigHashes[config] + self.timestep)
             random.shuffle(configurations[config]["endowments"])
         random.setstate(randomNumberReset)
-        random.shuffle(influencers)
 
-        for i in range(numAgents):
-            agentEndowment = {"seed": self.seed, "influencer": influencers.pop()
-                              }
+        for i in range(self.numAgents):
+            agentEndowment = {"seed": self.seed, "influencer": False}
             for config in configurations:
                 agentEndowment[config] = configurations[config]["endowments"].pop()
             endowments.append(agentEndowment)
@@ -521,6 +521,7 @@ if __name__ == "__main__":
                      "seed": -1,
                      "smallWorldEdgesPerAgent": 2,
                      "smallWorldRewiringProbability": 0.0,
+                     "strategy": None,
                      "threshold": 0.2,
                      "timesteps": 200
                      }

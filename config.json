@@ -33,6 +33,7 @@
         "seed": -1,
         "smallWorldEdgesPerAgent": 2,
         "smallWorldRewiringProbability": 0.2,
+        "strategy": null,
         "timesteps": 100
     }
 }
