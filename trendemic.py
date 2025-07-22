@@ -129,7 +129,9 @@ class Trendemic:
     def configureStrategy(self):
         if self.strategy == None:
             self.strategy = strategy.Strategy(self.strategyConfiguration, self)
-            self.strategy.seedAgents()
+        elif self.strategy == "maxDegree":
+            self.strategy = strategy.MaxDegree(self.strategyConfiguration, self)
+        self.strategy.seedAgents()
 
     def doTimestep(self):
         if self.timestep >= self.maxTimestep:

@@ -22,3 +22,18 @@ class Strategy:
 
     def __str__(self):
         return f"{self.configuration}"
+
+class MaxDegree(Strategy):
+    def __init__(self, configuration, trendemic):
+        super().__init__(configuration, trendemic)
+
+    def seedAgents(self):
+        maxDegreeAgents = []
+        for agent in self.trendemic.agents:
+            maxDegreeAgent = {"agent": agent, "degree": len(agent.neighbors)}
+            maxDegreeAgents.append(maxDegreeAgent)
+        maxDegreeAgents.sort(key=lambda agent: agent["degree"], reverse=True)
+        for i in range(self.trendemic.numInfluencers):
+            agent = maxDegreeAgents[i]["agent"]
+            agent.influenced = True
+            agent.influencer = True
