@@ -8,7 +8,7 @@ LOADING_SCREEN_DELAY = 100
 REPULSIVE_FORCE = 10
 
 class GUI:
-    def __init__(self, trendemic, screenHeight=1000, screenWidth=900):
+    def __init__(self, trendemic, screenHeight=1000, screenWidth=900): #screenHeight=1000, screenWidth=900
         self.trendemic = trendemic
         self.screenHeight = screenHeight
         self.screenWidth = screenWidth
@@ -33,6 +33,28 @@ class GUI:
         self.siteWidth = 0
         self.stopSimulation = False
         self.configureWindow()
+    
+    def clampNodeToScreen(self, node):
+        self.canvas.update_idletasks()
+        canvasWidth = self.canvas.winfo_width()
+        canvasHeight = self.canvas.winfo_height()
+
+        minX = self.graphBorder
+        maxX = canvasWidth - self.siteWidth - self.graphBorder
+
+        minY = self.graphBorder
+        maxY = canvasHeight - self.siteHeight - self.graphBorder
+
+        if node["x"] < minX:
+            node["x"] = minX
+        elif node["x"] > maxX:
+            node["x"] = maxX
+
+        if node["y"] < minY:
+            node["y"] = minY
+        elif node["y"] > maxY:
+            node["y"] = maxY
+
 
     def configureButtons(self, window):
         playButton = tkinter.Button(window, text="Play Simulation", command=self.doPlayButton)
@@ -81,7 +103,6 @@ class GUI:
             y = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
             self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor}
             i += 1
-
         self.doForceDirection()
 
         for node in self.nodes:
@@ -165,6 +186,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            self.clampNodeToScreen(node)
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -241,6 +263,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            self.clampNodeToScreen(node)
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
@@ -317,9 +340,12 @@ class GUI:
 
     def resizeInterface(self):
         self.updateScreenDimensions()
-        self.updateSiteDimensions()
         self.destroyCanvas()
         self.configureCanvas()
+        self.window.after(50, self.resizeInterfaceFinish)
+
+    def resizeInterfaceFinish(self):
+        self.updateSiteDimensions()
         self.configureGraph()
     
     def showLoadingScreen(self):
