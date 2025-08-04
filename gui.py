@@ -1,11 +1,18 @@
 import math
+import random
 import tkinter
 
 ATTRACTIVE_FORCE = 0.00003
 FORCE_DIRECTED_DAMPING = 0.88
 FORCE_DIRECTED_LAYOUT_ROUNDS = 50
 LOADING_SCREEN_DELAY = 100
-REPULSIVE_FORCE = 10
+REPULSIVE_FORCE = 100
+MIN_EDGE_WIDTH = 0.5
+MAX_EDGE_WIDTH = 2.5
+MIN_NODE_SIZE = 8
+MAX_NODE_SIZE = 30
+MIN_AGENTS_EXPECTED = 10
+MAX_AGENTS_EXPECTED = 100
 
 class GUI:
     def __init__(self, trendemic, screenHeight=1000, screenWidth=900): #screenHeight=1000, screenWidth=900
@@ -40,21 +47,22 @@ class GUI:
         canvasHeight = self.canvas.winfo_height()
 
         minX = self.graphBorder
-        maxX = canvasWidth - self.siteWidth - self.graphBorder
-
         minY = self.graphBorder
-        maxY = canvasHeight - self.siteHeight - self.graphBorder
+        size = node.get("size", self.siteWidth)
+        maxX = canvasWidth - size - self.graphBorder
+        maxY = canvasHeight - size - self.graphBorder
 
         if node["x"] < minX:
+            print(f"clamping node to min, original x pos: {node['x']} ")
             node["x"] = minX
         elif node["x"] > maxX:
             node["x"] = maxX
 
         if node["y"] < minY:
+            print(f"clamping node to min, original y pos: {node['y']} ")
             node["y"] = minY
         elif node["y"] > maxY:
             node["y"] = maxY
-
 
     def configureButtons(self, window):
         playButton = tkinter.Button(window, text="Play Simulation", command=self.doPlayButton)
@@ -94,24 +102,36 @@ class GUI:
     def configureGraph(self):
         self.showLoadingScreen()
         i = 1
+        # Calculate degree for dynamic scaling
+        degrees = [len(agent.neighbors) for agent in self.trendemic.agents]
+        minDeg = min(degrees)
+        maxDeg = max(degrees)
+
         # Setup initial radial dispersion of nodes for force-directed layout
+        n = len(self.trendemic.agents)
         for agent in self.trendemic.agents:
-            stepX = math.cos(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
-            stepY = math.sin(((2 * math.pi) * (360 / i)) / len(self.trendemic.agents))
+            angle = (2 * math.pi * i) / n
+            stepX = math.cos(angle)
+            stepY = math.sin(angle)
             fillColor = self.lookupFillColor(agent)
-            x = stepX * self.siteWidth * 5 + (self.screenWidth / 2)
-            y = stepY * self.siteHeight * 5 + (self.screenHeight / 2)
-            self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor}
+            nodeSize = self.getNodeSize(agent, minDeg, maxDeg)
+            radius = 200
+            x = stepX * radius + (self.screenWidth / 2)
+            y = stepY * radius + (self.screenHeight / 2)
+            self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor, "size": nodeSize}
             i += 1
         self.doForceDirection()
 
         for node in self.nodes:
             x = node["x"]
             y = node["y"]
+            if x == 90 or y == 90:
+                print(len(node['agent'].neighbors))
+            size = node["size"]
             x1 = x
             y1 = y
-            x2 = x + self.siteWidth
-            y2 = y + self.siteHeight
+            x2 = x + size
+            y2 = y + size
             node["object"] = self.canvas.create_oval(x1, y1, x2, y2, fill=node["color"], outline="#c0c0c0", activestipple="gray50")
         self.hideLoadingScreen()
         self.drawEdges()
@@ -156,7 +176,7 @@ class GUI:
 
     def doAttraction(self):
         traversed = []
-        attractiveForce = ATTRACTIVE_FORCE
+        attractiveForce = ATTRACTIVE_FORCE 
         for source in self.nodes:
             for sink in self.nodes:
                 if source in traversed:
@@ -186,7 +206,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            self.clampNodeToScreen(node)
+            #self.clampNodeToScreen(node)
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -231,7 +251,7 @@ class GUI:
 
     def doRepulsion(self):
         traversed = []
-        repulsiveForce = REPULSIVE_FORCE
+        repulsiveForce = REPULSIVE_FORCE / len(self.trendemic.agents) 
 
         # Set initial values for node's delta values
         for node in self.nodes:
@@ -263,7 +283,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            self.clampNodeToScreen(node)
+            #self.clampNodeToScreen(node)
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
@@ -302,6 +322,10 @@ class GUI:
     def drawEdges(self):
         for edge in self.edges:
             self.canvas.delete(edge)
+        self.edges = []
+        num_agents = len(self.trendemic.agents)
+        edgeWidth = self.scale(num_agents, MIN_AGENTS_EXPECTED, MAX_AGENTS_EXPECTED, MAX_EDGE_WIDTH, MIN_EDGE_WIDTH)
+
         for agent in self.trendemic.agents:
             agentNode = self.nodes[agent.ID]
             agentMidpoint = self.findMidpoint(agentNode)
@@ -312,17 +336,20 @@ class GUI:
                 neighborMidpoint = self.findMidpoint(neighborNode)
                 neighborX = neighborMidpoint[0]
                 neighborY = neighborMidpoint[1]
-                edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width="2")
+                edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width=edgeWidth)
                 self.edges.append(edge)
 
     def findMidpoint(self, node):
         x = node["x"]
         y = node["y"]
-        width = self.siteWidth
-        height = self.siteHeight
-        midpointX = x + (width / 2)
-        midpointY = y + (height / 2)
+        size = node.get("size", self.siteWidth)  
+        midpointX = x + (size / 2)
+        midpointY = y + (size / 2)
         return (midpointX, midpointY)
+        
+    def getNodeSize(self, agent, minDeg, maxDeg):
+        degree = len(agent.neighbors)
+        return self.scale(degree, minDeg, maxDeg, MIN_NODE_SIZE, MAX_NODE_SIZE)
 
     def hideLoadingScreen(self):
         self.loadingLabel.destroy()
@@ -347,6 +374,12 @@ class GUI:
     def resizeInterfaceFinish(self):
         self.updateSiteDimensions()
         self.configureGraph()
+    
+    def scale(self, value, min, max, scaledMin, scaledMax):
+        if max == min:
+            return (scaledMin + scaledMax) / 2
+        normalized = (value - min) / (max - min)
+        return scaledMin + normalized * (scaledMax - scaledMin)
     
     def showLoadingScreen(self):
         self.loadingLabel = tkinter.Label(self.window, text="Drawing graph, please wait...", font=("Roboto", 14))
