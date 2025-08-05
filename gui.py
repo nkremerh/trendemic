@@ -2,15 +2,16 @@ import math
 import random
 import tkinter
 
-ATTRACTIVE_FORCE = 0.00003
+ATTRACTIVE_FORCE = 0.00005
 FORCE_DIRECTED_DAMPING = 0.88
-FORCE_DIRECTED_LAYOUT_ROUNDS = 50
+FORCE_DIRECTED_LAYOUT_ROUNDS = 75
 LOADING_SCREEN_DELAY = 100
-REPULSIVE_FORCE = 100
-MIN_EDGE_WIDTH = 0.5
-MAX_EDGE_WIDTH = 2.5
+REPULSIVE_FORCE = 250
+INITIAL_RADIUS = 50
+MIN_EDGE_WIDTH = 0.3
+MAX_EDGE_WIDTH = 2.0
 MIN_NODE_SIZE = 8
-MAX_NODE_SIZE = 30
+MAX_NODE_SIZE = 40
 MIN_AGENTS_EXPECTED = 10
 MAX_AGENTS_EXPECTED = 100
 
@@ -21,6 +22,8 @@ class GUI:
         self.screenWidth = screenWidth
         self.canvas = None
         self.nodes = [None for i in range(len(self.trendemic.agents))]
+        self.shuffledAgents = self.trendemic.agents[:]
+        random.shuffle(self.shuffledAgents)
         self.edges = []
         self.window = None
         self.doubleClick = False
@@ -53,13 +56,13 @@ class GUI:
         maxY = canvasHeight - size - self.graphBorder
 
         if node["x"] < minX:
-            print(f"clamping node to min, original x pos: {node['x']} ")
+            #debug -> print(f"clamping node to min, original x pos: {node['x']} ")
             node["x"] = minX
         elif node["x"] > maxX:
             node["x"] = maxX
 
         if node["y"] < minY:
-            print(f"clamping node to min, original y pos: {node['y']} ")
+            #debug -> print(f"clamping node to min, original y pos: {node['y']} ")
             node["y"] = minY
         elif node["y"] > maxY:
             node["y"] = maxY
@@ -100,6 +103,9 @@ class GUI:
         return ["Add Agent"]
 
     def configureGraph(self):
+        self.canvas.delete("all")
+        self.nodes = [None for i in range(len(self.trendemic.agents))]
+        self.edges = [] 
         self.showLoadingScreen()
         i = 1
         # Calculate degree for dynamic scaling
@@ -109,13 +115,13 @@ class GUI:
 
         # Setup initial radial dispersion of nodes for force-directed layout
         n = len(self.trendemic.agents)
-        for agent in self.trendemic.agents:
+        for agent in self.shuffledAgents: 
             angle = (2 * math.pi * i) / n
             stepX = math.cos(angle)
             stepY = math.sin(angle)
             fillColor = self.lookupFillColor(agent)
             nodeSize = self.getNodeSize(agent, minDeg, maxDeg)
-            radius = 200
+            radius = INITIAL_RADIUS
             x = stepX * radius + (self.screenWidth / 2)
             y = stepY * radius + (self.screenHeight / 2)
             self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor, "size": nodeSize}
@@ -206,7 +212,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            #self.clampNodeToScreen(node)
+            self.clampNodeToScreen(node)
 
     def doCrossPlatformWindowSizing(self):
         self.window.update_idletasks()
@@ -283,7 +289,7 @@ class GUI:
             maxStep = 5
             node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            #self.clampNodeToScreen(node)
+            self.clampNodeToScreen(node)
 
     def doResize(self, event):
         # Do not resize if capturing a user input event but the event does not come from the GUI window
@@ -326,7 +332,7 @@ class GUI:
         num_agents = len(self.trendemic.agents)
         edgeWidth = self.scale(num_agents, MIN_AGENTS_EXPECTED, MAX_AGENTS_EXPECTED, MAX_EDGE_WIDTH, MIN_EDGE_WIDTH)
 
-        for agent in self.trendemic.agents:
+        for agent in self.shuffledAgents:
             agentNode = self.nodes[agent.ID]
             agentMidpoint = self.findMidpoint(agentNode)
             agentX = agentMidpoint[0]
@@ -375,11 +381,13 @@ class GUI:
         self.updateSiteDimensions()
         self.configureGraph()
     
-    def scale(self, value, min, max, scaledMin, scaledMax):
+    def scale(self, value, minValue, maxValue, scaledMin, scaledMax):
         if max == min:
             return (scaledMin + scaledMax) / 2
-        normalized = (value - min) / (max - min)
-        return scaledMin + normalized * (scaledMax - scaledMin)
+        normalized = (value - minValue) / (maxValue - minValue)
+        normalized = max(0.0, min(1.0, normalized))
+        result = scaledMin + normalized * (scaledMax - scaledMin)
+        return max(0.5, round(result, 2))
     
     def showLoadingScreen(self):
         self.loadingLabel = tkinter.Label(self.window, text="Drawing graph, please wait...", font=("Roboto", 14))
