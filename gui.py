@@ -56,13 +56,11 @@ class GUI:
         maxY = canvasHeight - size - self.graphBorder
 
         if node["x"] < minX:
-            #debug -> print(f"clamping node to min, original x pos: {node['x']} ")
             node["x"] = minX
         elif node["x"] > maxX:
             node["x"] = maxX
 
         if node["y"] < minY:
-            #debug -> print(f"clamping node to min, original y pos: {node['y']} ")
             node["y"] = minY
         elif node["y"] > maxY:
             node["y"] = maxY
