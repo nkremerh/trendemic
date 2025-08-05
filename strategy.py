@@ -3,6 +3,7 @@ import random
 class Strategy:
     def __init__(self, configuration, trendemic):
         self.configuration = configuration
+        self.strategy = configuration["strategy"]
         self.trendemic = trendemic
         #local_weight=1.0, global_weight=0.0, heterogeneous_thresholds=False, threshold_distribution="uniform",
         #social_engineer_enabled=False, seeding_strategy=None, social_engineer_count=5
@@ -30,7 +31,12 @@ class MaxDegree(Strategy):
     def seedAgents(self):
         maxDegreeAgents = []
         for agent in self.trendemic.agents:
-            maxDegreeAgent = {"agent": agent, "degree": len(agent.neighbors)}
+            neighborhood = agent.neighbors
+            if "SmallWorld" in self.strategy:
+                neighborhood = agent.smallWorldNeighbors
+            elif "ScaleFree" in self.strategy:
+                neighborhood = agent.scaleFreeNeighbors
+            maxDegreeAgent = {"agent": agent, "degree": len(neighborhood)}
             maxDegreeAgents.append(maxDegreeAgent)
         maxDegreeAgents.sort(key=lambda agent: agent["degree"], reverse=True)
         for i in range(self.trendemic.numInfluencers):

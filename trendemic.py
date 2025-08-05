@@ -36,7 +36,7 @@ class Trendemic:
         self.run = False
         self.runtimeStats = {}
         # TODO: Determine configuration options for seeding strategies
-        self.strategyConfiguration = {}
+        self.strategyConfiguration = {"strategy": self.strategy}
         self.timestep = 0
 
         self.configureAgents()
@@ -127,9 +127,9 @@ class Trendemic:
             self.runtimeStats.update(groupRuntimeStats)
 
     def configureStrategy(self):
-        if self.strategy == None:
+        if self.strategy == None or self.strategy == "random":
             self.strategy = strategy.Strategy(self.strategyConfiguration, self)
-        elif self.strategy == "maxDegree":
+        elif "maxDegree" in self.strategy:
             self.strategy = strategy.MaxDegree(self.strategyConfiguration, self)
         self.strategy.seedAgents()
 
