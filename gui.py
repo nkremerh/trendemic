@@ -79,6 +79,11 @@ class GUI:
         editingModes.insert(0, "None")
         self.lastSelectedEditingMode = tkinter.StringVar(window)
 
+        networkModes = ["Scale-Free Only", "Small-World Only", "Both (Color Coded)"]
+        networkDropdown = tkinter.OptionMenu(window, self.networkDisplayMode, *networkModes, command=self.redrawEdges)
+        networkDropdown.grid(row=2, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
+        self.widgets["networkDropdown"] = networkDropdown
+
         # Use first item as default name
         self.lastSelectedEditingMode.set(editingModes[0])
         for mode in editingModes:
@@ -129,8 +134,6 @@ class GUI:
         for node in self.nodes:
             x = node["x"]
             y = node["y"]
-            if x == 90 or y == 90:
-                print(len(node['agent'].neighbors))
             size = node["size"]
             x1 = x
             y1 = y
@@ -148,6 +151,8 @@ class GUI:
 
     def configureWindow(self):
         window = tkinter.Tk()
+        self.networkDisplayMode = tkinter.StringVar(master=self.window)
+        self.networkDisplayMode.set("Both (Color Coded)")
         self.window = window
         window.title("Trendemic")
         window.minsize(width=150, height=250)
@@ -330,17 +335,40 @@ class GUI:
         num_agents = len(self.trendemic.agents)
         edgeWidth = self.scale(num_agents, MIN_AGENTS_EXPECTED, MAX_AGENTS_EXPECTED, MAX_EDGE_WIDTH, MIN_EDGE_WIDTH)
 
+        mode = self.networkDisplayMode.get()
+        drawnPairs = set()
+
         for agent in self.shuffledAgents:
-            agentNode = self.nodes[agent.ID]
-            agentMidpoint = self.findMidpoint(agentNode)
-            agentX = agentMidpoint[0]
-            agentY = agentMidpoint[1]
-            for neighbor in agent.neighbors:
-                neighborNode = self.nodes[neighbor.ID]
-                neighborMidpoint = self.findMidpoint(neighborNode)
-                neighborX = neighborMidpoint[0]
-                neighborY = neighborMidpoint[1]
-                edge = self.canvas.create_line(agentX, agentY, neighborX, neighborY, fill="black", width=edgeWidth)
+            agentID = agent.ID
+            aX, aY = self.findMidpoint(self.nodes[agentID])
+
+            neighborsToDraw = []
+            if mode == "Scale-Free Only":
+                neighborsToDraw = [(n, "red") for n in agent.scaleFreeNeighbors]
+            elif mode == "Small-World Only":
+                neighborsToDraw = [(n, "blue") for n in agent.smallWorldNeighbors]
+            elif mode == "Both (Color Coded)":
+                combined = {}
+                for neighbor in agent.scaleFreeNeighbors:
+                    combined[neighbor.ID] = "red"
+                for neighbor in agent.smallWorldNeighbors:
+                    if neighbor.ID in combined:
+                        combined[neighbor.ID] = "purple"  
+                    else:
+                        combined[neighbor.ID] = "blue"
+                neighborsToDraw = [(self.trendemic.agents[nID], color) for nID, color in combined.items()]
+            else:
+                neighborsToDraw = [(n, "black") for n in agent.neighbors]
+
+            for neighbor, color in neighborsToDraw:
+                neighborID = neighbor.ID
+                edgeKey = tuple(sorted((agentID, neighborID)))
+                if edgeKey in drawnPairs:
+                    continue
+                drawnPairs.add(edgeKey)
+
+                bX, bY = self.findMidpoint(self.nodes[neighborID])
+                edge = self.canvas.create_line(aX, aY, bX, bY, fill=color, width=edgeWidth)
                 self.edges.append(edge)
 
     def findMidpoint(self, node):
@@ -368,6 +396,9 @@ class GUI:
         elif agent.influenced:
             return self.colors["influenced"]
         return self.colors["default"]
+    
+    def redrawEdges(self, *args):
+        self.drawEdges()
 
     def resizeInterface(self):
         self.updateScreenDimensions()
