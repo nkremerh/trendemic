@@ -16,7 +16,7 @@ MIN_AGENTS_EXPECTED = 10
 MAX_AGENTS_EXPECTED = 100
 
 class GUI:
-    def __init__(self, trendemic, screenHeight=1000, screenWidth=900): #screenHeight=1000, screenWidth=900
+    def __init__(self, trendemic, screenHeight=1000, screenWidth=900): 
         self.trendemic = trendemic
         self.screenHeight = screenHeight
         self.screenWidth = screenWidth
@@ -55,15 +55,15 @@ class GUI:
         maxX = canvasWidth - size - self.graphBorder
         maxY = canvasHeight - size - self.graphBorder
 
-        if node["x"] < minX:
-            node["x"] = minX
-        elif node["x"] > maxX:
-            node["x"] = maxX
+        if node['x'] < minX:
+            node['x'] = minX
+        elif node['x'] > maxX:
+            node['x'] = maxX
 
-        if node["y"] < minY:
-            node["y"] = minY
-        elif node["y"] > maxY:
-            node["y"] = maxY
+        if node['y'] < minY:
+            node['y'] = minY
+        elif node['y'] > maxY:
+            node['y'] = maxY
 
     def configureButtons(self, window):
         playButton = tkinter.Button(window, text="Play Simulation", command=self.doPlayButton)
@@ -79,8 +79,8 @@ class GUI:
         editingModes.insert(0, "None")
         self.lastSelectedEditingMode = tkinter.StringVar(window)
 
-        networkModes = ["Scale-Free Only", "Small-World Only", "Both (Color Coded)"]
-        networkDropdown = tkinter.OptionMenu(window, self.networkDisplayMode, *networkModes, command=self.redrawEdges)
+        networkModes = ["Scale Free Only", "Small World Only", "Both (Color Coded)"]
+        networkDropdown = tkinter.OptionMenu(window, self.networkDisplayMode, *networkModes, command=self.drawEdges)
         networkDropdown.grid(row=2, column=0, columnspan=self.menuTrayColumns, sticky="nsew")
         self.widgets["networkDropdown"] = networkDropdown
 
@@ -132,8 +132,8 @@ class GUI:
         self.doForceDirection()
 
         for node in self.nodes:
-            x = node["x"]
-            y = node["y"]
+            x = node['x']
+            y = node['y']
             size = node["size"]
             x1 = x
             y1 = y
@@ -185,7 +185,7 @@ class GUI:
 
     def doAttraction(self):
         traversed = []
-        attractiveForce = ATTRACTIVE_FORCE 
+        attractiveForce = ATTRACTIVE_FORCE
         for source in self.nodes:
             for sink in self.nodes:
                 if source in traversed:
@@ -213,8 +213,8 @@ class GUI:
             traversed.append(source)
         for node in self.nodes:
             maxStep = 5
-            node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node['x'] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node['y'] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             self.clampNodeToScreen(node)
 
     def doCrossPlatformWindowSizing(self):
@@ -260,7 +260,7 @@ class GUI:
 
     def doRepulsion(self):
         traversed = []
-        repulsiveForce = REPULSIVE_FORCE / len(self.trendemic.agents) 
+        repulsiveForce = REPULSIVE_FORCE / len(self.trendemic.agents)
 
         # Set initial values for node's delta values
         for node in self.nodes:
@@ -290,8 +290,8 @@ class GUI:
             traversed.append(source)
         for node in self.nodes:
             maxStep = 5
-            node["x"] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
-            node["y"] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node['x'] += max(min(node["deltaX"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
+            node['y'] += max(min(node["deltaY"] * FORCE_DIRECTED_DAMPING, maxStep), -1 * maxStep)
             self.clampNodeToScreen(node)
 
     def doResize(self, event):
@@ -328,7 +328,7 @@ class GUI:
         self.window.destroy()
         self.trendemic.toggleEnd()
 
-    def drawEdges(self):
+    def drawEdges(self, *args, **kwargs):
         for edge in self.edges:
             self.canvas.delete(edge)
         self.edges = []
@@ -343,9 +343,9 @@ class GUI:
             aX, aY = self.findMidpoint(self.nodes[agentID])
 
             neighborsToDraw = []
-            if mode == "Scale-Free Only":
+            if mode == "Scale Free Only":
                 neighborsToDraw = [(n, "red") for n in agent.scaleFreeNeighbors]
-            elif mode == "Small-World Only":
+            elif mode == "Small World Only":
                 neighborsToDraw = [(n, "blue") for n in agent.smallWorldNeighbors]
             elif mode == "Both (Color Coded)":
                 combined = {}
@@ -372,8 +372,8 @@ class GUI:
                 self.edges.append(edge)
 
     def findMidpoint(self, node):
-        x = node["x"]
-        y = node["y"]
+        x = node['x']
+        y = node['y']
         size = node.get("size", self.siteWidth)  
         midpointX = x + (size / 2)
         midpointY = y + (size / 2)
@@ -396,9 +396,6 @@ class GUI:
         elif agent.influenced:
             return self.colors["influenced"]
         return self.colors["default"]
-    
-    def redrawEdges(self, *args):
-        self.drawEdges()
 
     def resizeInterface(self):
         self.updateScreenDimensions()
