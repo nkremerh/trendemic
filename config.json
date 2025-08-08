@@ -4,10 +4,11 @@
         "jobUpdateFrequency": 5,
         "numParallelSimJobs": 1,
         "numSeeds": 100,
-        "plots": [],
         "plotStatistic": "mean",
         "plotTimesteps": 1000,
-        "pythonAlias": "python"
+        "pythonAlias": "python",
+        "sweepParameter": "agentThreshold",
+        "sweepRange": [0.2, 0.7]
     },
     "trendemicOptions": {
         "__README__": "Default values for Trendemic simulation provided here. Details can be found in the README.",
