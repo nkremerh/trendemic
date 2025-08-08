@@ -16,7 +16,7 @@ MIN_AGENTS_EXPECTED = 10
 MAX_AGENTS_EXPECTED = 100
 
 class GUI:
-    def __init__(self, trendemic, screenHeight=1000, screenWidth=900): 
+    def __init__(self, trendemic, screenHeight=1000, screenWidth=900):
         self.trendemic = trendemic
         self.screenHeight = screenHeight
         self.screenWidth = screenWidth
@@ -127,7 +127,7 @@ class GUI:
             radius = INITIAL_RADIUS
             x = stepX * radius + (self.screenWidth / 2)
             y = stepY * radius + (self.screenHeight / 2)
-            self.nodes[agent.ID] = { "agent": agent, "x": x, "y": y, "deltaX": 0, "deltaY": 0,"color": fillColor, "size": nodeSize}
+            self.nodes[agent.ID] = { "agent": agent, 'x': x, 'y': y, "deltaX": 0, "deltaY": 0,"color": fillColor, "size": nodeSize}
             i += 1
         self.doForceDirection()
 
