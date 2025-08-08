@@ -127,7 +127,9 @@ class Trendemic:
             self.runtimeStats.update(groupRuntimeStats)
 
     def configureStrategy(self):
-        if "maxDegree" in self.strategy:
+        if self.strategy == None or self.strategy == "random":
+            self.strategy = strategy.Strategy(self.strategyConfiguration, self)
+        elif "maxDegree" in self.strategy:
             self.strategy = strategy.MaxDegree(self.strategyConfiguration, self)
         else:
             self.strategy = strategy.Strategy(self.strategyConfiguration, self)
