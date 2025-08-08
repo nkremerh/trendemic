@@ -13,7 +13,7 @@ class Strategy:
         influenced = 0
         influencers = []
         while influenced < self.trendemic.numInfluencers:
-            index = random.randint(0, len(self.trendemic.agents))
+            index = random.randint(0, len(self.trendemic.agents) - 1)
             agent = self.trendemic.agents[index]
             if agent not in influencers:
                 influencers.append(agent)
