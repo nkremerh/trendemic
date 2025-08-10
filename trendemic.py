@@ -87,10 +87,15 @@ class Trendemic:
                         agent.scaleFreeNeighbors.append(neighbor)
                         nodeDegrees += 1
         if "smallWorld" in self.networkTypes:
-            numNeighborsPerSide = math.ceil(self.configuration["smallWorldEdgesPerAgent"] / 2)
+            numNeighborsPerSide = int(self.configuration["smallWorldEdgesPerAgent"] / 2)
+            numNeighborsLeftSide = numNeighborsPerSide
+            numNeighborsRightSide = numNeighborsPerSide
+            if self.configuration["smallWorldEdgesPerAgent"] % 2 != 0:
+                numNeighborsLeftSide = math.floor(numNeighborsPerSide)
+                numNeighborsRightSide = math.ceil(numNeighborsPerSide)
             for i in range(len(self.agents)):
                 agent = self.agents[i]
-                for j in range(-1 * numNeighborsPerSide, numNeighborsPerSide + 1):
+                for j in range(-1 * numNeighborsLeftSide, numNeighborsRightSide + 1):
                     index = i + j
                     if index == i:
                         continue
@@ -131,6 +136,8 @@ class Trendemic:
             self.strategy = strategy.Strategy(self.strategyConfiguration, self)
         elif "maxDegree" in self.strategy:
             self.strategy = strategy.MaxDegree(self.strategyConfiguration, self)
+        elif "maxCommunity" in self.strategy:
+            self.strategy = strategy.MaxCommunity(self.strategyConfiguration, self)
         else:
             self.strategy = strategy.Strategy(self.strategyConfiguration, self)
         self.strategy.seedAgents()

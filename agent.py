@@ -64,9 +64,13 @@ class Agent:
             membership = not membership
         return membership
 
+    def setInfluencer(self):
+        self.influenced = True
+        self.influencer = True
+
     def updateValues(self):
         # Method to be used by child classes to do interesting things with agent behavior
         return
 
     def __str__(self):
-        return f"{self.ID}: Influencer: {self.influencer}, Neighbors: {self.neighbors}"
+        return f"{self.ID}: Influencer: {self.influencer}, Neighbors: {len(self.neighbors)}"
