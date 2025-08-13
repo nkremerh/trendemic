@@ -206,11 +206,9 @@ class Trendemic:
 
     def randomizeAgentEndowments(self):
         configs = self.configuration
-        scaleFreeWeight = configs["agentScaleFreeWeight"]
-        smallWorldWeight = configs["agentSmallWorldWeight"]
+        scaleFreeSmallWorldRatio = configs["agentScaleFreeSmallWorldRatio"]
         threshold = configs["agentThreshold"]
-        configurations = {"scaleFreeWeight": {"endowments": [], "curr": scaleFreeWeight[0], "min": scaleFreeWeight[0], "max": scaleFreeWeight[1]},
-                          "smallWorldWeight": {"endowments": [], "curr": smallWorldWeight[0], "min": smallWorldWeight[0], "max": smallWorldWeight[1]},
+        configurations = {"scaleFreeSmallWorldRatio": {"endowments": [], "curr": scaleFreeSmallWorldRatio[0], "min": scaleFreeSmallWorldRatio[0], "max": scaleFreeSmallWorldRatio[1]},
                           "threshold": {"endowments": [], "curr": threshold[0], "min": threshold[0], "max": threshold[1]}
                           }
 
@@ -260,6 +258,10 @@ class Trendemic:
             agentEndowment = {"seed": self.seed, "influencer": False}
             for config in configurations:
                 agentEndowment[config] = configurations[config]["endowments"].pop()
+                if config == "scaleFreeSmallWorldRatio":
+                    print(f"Setting ratio {agentEndowment[config]}.")
+                    agentEndowment["scaleFreeWeight"] = agentEndowment[config]
+                    agentEndowment["smallWorldWeight"] = 1 - agentEndowment[config]
             endowments.append(agentEndowment)
         return endowments
 
@@ -523,7 +525,7 @@ if __name__ == "__main__":
     # Set default values for simulation configuration
     configuration = {
                      "adoptionThreshold": 1.0,
-                     "agentScaleFreeWeight": [0.0, 0.0],
+                     "agentScaleFreeSmallWorldRatio": [0.5, 0.5],
                      "agentSmallWorldWeight": [1.0, 1.0],
                      "agentThreshold": [0.2, 0.2],
                      "debugMode": ["none"],
