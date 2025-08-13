@@ -42,7 +42,7 @@ def createConfigurations(config, path, mode="json"):
 
             for run in sweep:
                 simOpts = config["trendemicOptions"]
-                simOpts[parameter] = run
+                simOpts[parameter] = [run, run]
                 simOpts["seed"] = seed
                 if mode == "json":
                     simOpts["logfile"] = f"{path}{run}-{seed}.json"
@@ -158,7 +158,7 @@ def printHelp():
     exit(0)
 
 def runSimulation(configFile, pythonAlias, jobNumber, totalJobs):
-    print(f"Running decision model {configFile} ({jobNumber}/{totalJobs})")
+    print(f"Running {configFile} ({jobNumber}/{totalJobs})")
     os.system(f"{pythonAlias} ../trendemic.py --conf {configFile} &> /dev/null")
 
 def runSimulations(config, configFiles):

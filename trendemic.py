@@ -120,7 +120,7 @@ class Trendemic:
             agent.neighbors = list(set(agent.smallWorldNeighbors + agent.scaleFreeNeighbors))
 
     def configureLog(self):
-        self.runtimeStats = {"timestep": 0, "adoptionRate": 0, "adoptionThresholdMet": False, "agents": 0, "influenced": 0, "meanDegreeNewlyInfluenced": 0}
+        self.runtimeStats = {"timestep": 0, "adoptionRate": 0, "agents": 0, "influenced": 0, "meanDegreeNewlyInfluenced": 0}
         self.log = open(self.configuration["logfile"], 'a') if self.configuration["logfile"] != None else None
         self.experimentalGroup = self.configuration["experimentalGroup"]
         if self.experimentalGroup != None:
@@ -318,7 +318,6 @@ class Trendemic:
         self.updateRuntimeStatsPerGroup()
 
     def updateRuntimeStatsPerGroup(self, group=None, notInGroup=False):
-        adoptionThresholdMet = False
         numInfluenced = 0
         meanDegreeNewlyInfluenced = 0
         newlyInfluenced = 0
@@ -328,7 +327,6 @@ class Trendemic:
                 continue
             numAgents += 1
             if agent.timestepInfluenced == self.timestep:
-                print(f"Agent {agent.ID} influenced.")
                 newlyInfluenced += 1
                 meanDegreeNewlyInfluenced += len(agent.neighbors)
             if agent.influenced == True:
@@ -337,10 +335,7 @@ class Trendemic:
         adoptionRate = numInfluenced / numAgents if numAgents != 0 else 0
         meanDegreeNewlyInfluenced = meanDegreeNewlyInfluenced / numAgents if numAgents != 0 else 0
 
-        if adoptionRate >= self.adoptionThreshold:
-            adoptionThresholdMet = True
-
-        runtimeStats = {"adoptionRate": adoptionRate, "adoptionThresholdMet": adoptionThresholdMet, "agents": numAgents, "influenced": numInfluenced, "meanDegreeNewlyInfluenced": meanDegreeNewlyInfluenced}
+        runtimeStats = {"adoptionRate": adoptionRate, "agents": numAgents, "influenced": numInfluenced, "meanDegreeNewlyInfluenced": meanDegreeNewlyInfluenced}
 
         if group == None:
             self.runtimeStats["timestep"] = self.timestep
@@ -555,23 +550,6 @@ if __name__ == "__main__":
                      "threshold": 0.2,
                      "timesteps": 200
                      }
-
-    '''
-    sweep_parameter = "threshold"
-    sweep_start = 0.2
-    sweep_end = 0.2
-    sweep_step = 0.01
-    num_trials = 10
-    tipping_fraction = 0.75
-
-    sweep_enabled = True
-    evaluation_mode = "tipping_threshold"
- 
-    moreConfigs = {
-                   "social_engineer_enabled": False,
-                   "seeding_strategy": None,
-                   }
-    '''
 
     configuration = parseOptions(configuration)
     configuration = verifyConfiguration(configuration)
