@@ -16,12 +16,13 @@ class Agent:
         self.smallWorldWeight = configuration["smallWorldWeight"]
         self.threshold = configuration["threshold"]
 
-        self.influenced = True if self.influencer == True else False
-        self.nextInfluenced = False
         self.age = 0
+        self.influenced = True if self.influencer == True else False
         self.neighbors = []
+        self.nextInfluenced = False
         self.scaleFreeNeighbors = []
         self.smallWorldNeighbors = []
+        self.timestepInfluenced = -1
 
     def doInfluence(self):
         if len(self.neighbors) == 0:
@@ -47,7 +48,7 @@ class Agent:
 
         # If enough neighbors are influenced, guarantee agent is influenced next timestep
         if fractionInfluenced >= self.threshold:
-            self.influenced = True
+            self.setInfluenced()
 
     def doTimestep(self, timestep):
         self.timestep = timestep
@@ -64,9 +65,14 @@ class Agent:
             membership = not membership
         return membership
 
+    def setInfluenced(self):
+        self.influenced = True
+        self.timestepInfluenced = self.trendemic.timestep
+
     def setInfluencer(self):
         self.influenced = True
         self.influencer = True
+        self.timestepInfluenced = self.trendemic.timestep
 
     def updateValues(self):
         # Method to be used by child classes to do interesting things with agent behavior

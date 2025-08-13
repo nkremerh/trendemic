@@ -13,6 +13,7 @@ import sys
 
 class Trendemic:
     def __init__(self, configuration):
+        self.adoptionThreshold = configuration["adoptionThreshold"]
         self.agentConfigHashes = None
         self.configuration = configuration
         self.debug = configuration["debugMode"]
@@ -41,9 +42,10 @@ class Trendemic:
 
         self.configureAgents()
         self.configureGraph()
-        self.configureLog()
         self.configureStrategy()
         self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
+
+        self.configureLog()
 
     def configureAgents(self, editCell=None):
         # Ensure agent endowments are randomized across initial agent count to make replacements follow same distributions
@@ -118,7 +120,7 @@ class Trendemic:
             agent.neighbors = list(set(agent.smallWorldNeighbors + agent.scaleFreeNeighbors))
 
     def configureLog(self):
-        self.runtimeStats = {"timestep": 0, "population": len(self.agents)}
+        self.runtimeStats = {"timestep": 0, "adoptionRate": 0, "adoptionThresholdMet": False, "agents": 0, "influenced": 0, "meanDegreeNewlyInfluenced": 0}
         self.log = open(self.configuration["logfile"], 'a') if self.configuration["logfile"] != None else None
         self.experimentalGroup = self.configuration["experimentalGroup"]
         if self.experimentalGroup != None:
@@ -130,6 +132,7 @@ class Trendemic:
                 groupRuntimeStats[controlGroupKey] = 0
                 groupRuntimeStats[experimentalGroupKey] = 0
             self.runtimeStats.update(groupRuntimeStats)
+        self.updateRuntimeStats()
 
     def configureStrategy(self):
         if self.strategy == None or self.strategy == "random":
@@ -315,14 +318,29 @@ class Trendemic:
         self.updateRuntimeStatsPerGroup()
 
     def updateRuntimeStatsPerGroup(self, group=None, notInGroup=False):
+        adoptionThresholdMet = False
+        numInfluenced = 0
+        meanDegreeNewlyInfluenced = 0
+        newlyInfluenced = 0
         numAgents = 0
         for agent in self.agents:
             if group != None and agent.isInGroup(group, notInGroup) == False:
                 continue
             numAgents += 1
+            if agent.timestepInfluenced == self.timestep:
+                print(f"Agent {agent.ID} influenced.")
+                newlyInfluenced += 1
+                meanDegreeNewlyInfluenced += len(agent.neighbors)
+            if agent.influenced == True:
+                numInfluenced += 1
 
-        runtimeStats = {"population": numAgents
-                        }
+        adoptionRate = numInfluenced / numAgents if numAgents != 0 else 0
+        meanDegreeNewlyInfluenced = meanDegreeNewlyInfluenced / numAgents if numAgents != 0 else 0
+
+        if adoptionRate >= self.adoptionThreshold:
+            adoptionThresholdMet = True
+
+        runtimeStats = {"adoptionRate": adoptionRate, "adoptionThresholdMet": adoptionThresholdMet, "agents": numAgents, "influenced": numInfluenced, "meanDegreeNewlyInfluenced": meanDegreeNewlyInfluenced}
 
         if group == None:
             self.runtimeStats["timestep"] = self.timestep
@@ -509,6 +527,7 @@ def verifyConfiguration(configuration):
 if __name__ == "__main__":
     # Set default values for simulation configuration
     configuration = {
+                     "adoptionThreshold": 1.0,
                      "agentScaleFreeWeight": [0.0, 0.0],
                      "agentSmallWorldWeight": [1.0, 1.0],
                      "agentThreshold": [0.2, 0.2],

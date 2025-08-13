@@ -12,6 +12,7 @@
     },
     "trendemicOptions": {
         "__README__": "Default values for Trendemic simulation provided here. Details can be found in the README.",
+        "adoptionThreshold": 0.5,
         "agentScaleFreeWeight": [0.2, 0.2],
         "agentSmallWorldWeight": [0.8, 0.8],
         "agentThreshold": [0.2, 0.2],

@@ -424,7 +424,7 @@ class GUI:
     def updateLabels(self):
         self.trendemic.updateRuntimeStats()
         stats = self.trendemic.runtimeStats
-        statsString = f"Timestep: {self.trendemic.timestep} | Agents: {stats['population']}"
+        statsString = f"Timestep: {self.trendemic.timestep} | Agents: {stats['agents']}"
         label = self.widgets["statsLabel"]
         label.config(text=statsString)
 
