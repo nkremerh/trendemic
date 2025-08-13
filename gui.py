@@ -33,7 +33,7 @@ class GUI:
         self.colors = {"default": self.palette[0], "influencer": self.palette[1], "influenced": self.palette[2]}
 
         # Set the default strings for interface at simulation start
-        self.defaultSimulationString = "Timestep: - | Agents: -"
+        self.defaultSimulationString = "Timestep: - | Agents: - | Influenced: - | Adoption Fraction: - | Mean Degree for Newly Influenced: -"
 
         self.widgets = {}
         self.borderEdge = 5
@@ -424,7 +424,7 @@ class GUI:
     def updateLabels(self):
         self.trendemic.updateRuntimeStats()
         stats = self.trendemic.runtimeStats
-        statsString = f"Timestep: {self.trendemic.timestep} | Agents: {stats['agents']}"
+        statsString = f"Timestep: {self.trendemic.timestep} | Agents: {stats['agents']} | Influenced: {stats['influenced']} | Adoption Fraction: {round(stats['influenced'] / stats['agents'], 2)} | Mean Degree for Newly Influenced: {stats['meanDegreeNewlyInfluenced']}"
         label = self.widgets["statsLabel"]
         label.config(text=statsString)
 
