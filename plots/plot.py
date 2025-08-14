@@ -59,8 +59,9 @@ def generateSimpleLinePlot(sweepParameter, dataset, totalTimesteps, outfile, col
     colors = ["magenta", "cyan", "yellow", "black", "red", "green", "blue"]
     colorIndex = 0
     for sweepValue in dataset:
+        percentageDenominator = dataset[sweepValue]["aggregates"]["agents"][0]  / 100 if percentage == True else 1
         sweepValueString = f"{sweepValue} {sweepParameter}"
-        y = [dataset[sweepValue]["aggregates"][column][i] for i in range(totalTimesteps + 1)]
+        y = [dataset[sweepValue]["aggregates"][column][i] / percentageDenominator for i in range(totalTimesteps + 1)]
         print(y)
         axes.plot(x, y, color=colors[colorIndex % len(colors)], label=sweepValueString)
         colorIndex += 1

@@ -259,7 +259,6 @@ class Trendemic:
             for config in configurations:
                 agentEndowment[config] = configurations[config]["endowments"].pop()
                 if config == "scaleFreeSmallWorldRatio":
-                    print(f"Setting ratio {agentEndowment[config]}.")
                     agentEndowment["scaleFreeWeight"] = agentEndowment[config]
                     agentEndowment["smallWorldWeight"] = 1 - agentEndowment[config]
             endowments.append(agentEndowment)
