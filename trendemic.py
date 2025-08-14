@@ -115,6 +115,15 @@ class Trendemic:
                         continue
                     else:
                         agent.smallWorldNeighbors.append(neighbor)
+        for agent in self.agents:
+            for neighbor in agent.scaleFreeNeighbors:
+                if agent not in neighbor.scaleFreeNeighbors:
+                    neighbor.scaleFreeNeighbors.append(agent)
+            for neighbor in agent.smallWorldNeighbors:
+                if agent not in neighbor.smallWorldNeighbors:
+                    neighbor.smallWorldNeighbors.append(agent)
+            agent.neighbors = list(set(agent.scaleFreeNeighbors) | set(agent.smallWorldNeighbors))
+
         # After configuring edges, ensure unique list of all neighbors
         for agent in self.agents:
             agent.neighbors = list(set(agent.smallWorldNeighbors + agent.scaleFreeNeighbors))
