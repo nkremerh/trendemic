@@ -77,7 +77,7 @@ def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
         if not (filename.endswith(".json") or filename.endswith(".csv")):
             continue
         filePath = path + filename
-        fileDecisionModel = re.compile(r"^(\d+\.\d+)-(\d+)\.(json|csv)")
+        fileDecisionModel = re.compile(r"^(.+)-(\d+)\.(json|csv)")
         fileSearch = re.search(fileDecisionModel, filename)
         if fileSearch == None:
             continue

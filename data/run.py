@@ -42,7 +42,10 @@ def createConfigurations(config, path, mode="json"):
 
             for run in sweep:
                 simOpts = config["trendemicOptions"]
-                simOpts[parameter] = [run, run]
+                if type(simOpts[parameter]) == list:
+                    simOpts[parameter] = [run, run]
+                else:
+                    simOpts[parameter] = run
                 simOpts["seed"] = seed
                 if mode == "json":
                     simOpts["logfile"] = f"{path}{run}-{seed}.json"
