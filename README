@@ -122,3 +122,17 @@ pythonAlias: string
     Set the alias to the local Python 3 installation.
     Note: Python 3 is required to run the simulation.
     Default: "python"
+
+sweepIncrement: float
+    Set the value by which the sweep parameter is incremented.
+    Note: If not provided, the decimals provided in the sweep parameter range are used to calculate the increment.
+    Default: 0.1
+
+sweepParamenter: string
+    Set the parameter for performing a parameter sweep during data collection.
+    Options: "agentThreshold", "agentScaleFreeSmallWorldRatio", "numAgents", "numInfluencers", "scaleFreeHubs", "scaleFreeStartingEdgesPerAgent", "smallWorldEdgesPerAgent", "smallWorldRewiringProbability"
+    Default: "agentThreshold"
+
+sweepRange: [float, float]
+    Set the minimum and maximum values for the parameter sweep.
+    Default: [0.2, 0.7]

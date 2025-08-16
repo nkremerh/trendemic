@@ -8,6 +8,7 @@
         "plotStatistic": "mean",
         "plotTimesteps": 100,
         "pythonAlias": "python",
+        "sweepIncrement": 0.1,
         "sweepParameter": "agentThreshold",
         "sweepRange": [0.2, 0.7]
     },

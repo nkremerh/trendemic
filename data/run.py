@@ -20,25 +20,31 @@ def createConfigurations(config, path, mode="json"):
             sweep = []
             parameter = dataOpts["sweepParameter"]
             parameterRange = dataOpts["sweepRange"]
+            parameterIncrement = dataOpts["sweepIncrement"]
+            decimals = 0
             if parameter != None and parameterRange != None:
                 parameterMin = dataOpts["sweepRange"][0]
                 parameterMax = dataOpts["sweepRange"][1]
-                parameterMinDecimals = str(parameterMin).split('.')
-                parameterMaxDecimals = str(parameterMax).split('.')
-                decimalRange = []
-                if len(parameterMinDecimals) == 2:
-                    parameterMinDecimals = len(parameterMinDecimals[1])
-                    decimalRange.append(parameterMinDecimals)
-                if len(parameterMaxDecimals) == 2:
-                    parameterMaxDecimals = len(parameterMaxDecimals[1])
-                    decimalRange.append(parameterMaxDecimals)
-                # If no fractional component to configuration item, assume increment of 1
-                decimals = max(decimalRange) if len(decimalRange) > 0 else 0
-                increment = 10 ** (-1 * decimals)
+                if parameterIncrement == None:
+                    parameterMinDecimals = str(parameterMin).split('.')
+                    parameterMaxDecimals = str(parameterMax).split('.')
+                    decimalRange = []
+                    if len(parameterMinDecimals) == 2:
+                        parameterMinDecimals = len(parameterMinDecimals[1])
+                        decimalRange.append(parameterMinDecimals)
+                    if len(parameterMaxDecimals) == 2:
+                        parameterMaxDecimals = len(parameterMaxDecimals[1])
+                        decimalRange.append(parameterMaxDecimals)
+                    # If no fractional component to configuration item, assume increment of 1
+                    decimals = max(decimalRange) if len(decimalRange) > 0 else 0
+                    parameterIncrement = 10 ** (-1 * decimals)
+                else:
+                    incrementDecimals = str(parameterIncrement).split('.')
+                    decimals = len(incrementDecimals[1])
                 curr = parameterMin
                 while curr <= parameterMax:
                     sweep.append(curr)
-                    curr = round(curr + increment, decimals)
+                    curr = round(curr + parameterIncrement, decimals)
 
             for run in sweep:
                 simOpts = config["trendemicOptions"]
