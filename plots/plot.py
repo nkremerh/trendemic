@@ -11,7 +11,6 @@ import sys
 def findMeans(dataset):
     print(f"Finding mean values across {totalTimesteps} timesteps")
     for sweepValue in dataset:
-        print(sweepValue)
         for column in dataset[sweepValue]["metrics"]:
             for i in range(len(dataset[sweepValue]["metrics"][column])):
                 if column not in dataset[sweepValue]["aggregates"]:
@@ -58,11 +57,10 @@ def generateSimpleLinePlot(sweepParameter, dataset, totalTimesteps, outfile, col
     lines = []
     colors = ["magenta", "cyan", "yellow", "black", "red", "green", "blue", "purple", "gray", "brown", "pink"]
     colorIndex = 0
-    for sweepValue in dataset:
+    for sweepValue, dictValue in sorted(dataset.items()):
         percentageDenominator = dataset[sweepValue]["aggregates"]["agents"][0]  / 100 if percentage == True else 1
         sweepValueString = f"{sweepValue} {sweepParameter}"
         y = [dataset[sweepValue]["aggregates"][column][i] / percentageDenominator for i in range(totalTimesteps + 1)]
-        print(y)
         axes.plot(x, y, color=colors[colorIndex % len(colors)], label=sweepValueString)
         colorIndex += 1
     if percentage == True:

@@ -40,7 +40,7 @@ def createConfigurations(config, path, mode="json"):
                     parameterIncrement = 10 ** (-1 * decimals)
                 else:
                     incrementDecimals = str(parameterIncrement).split('.')
-                    decimals = len(incrementDecimals[1])
+                    decimals = len(incrementDecimals[1]) if len(incrementDecimals) > 1 else 0
                 curr = parameterMin
                 while curr <= parameterMax:
                     sweep.append(curr)
