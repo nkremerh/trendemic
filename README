@@ -55,8 +55,8 @@ headlessMode: bool
 
 interfaceHeight: int
     Set number of pixels for GUI height.
-    Note: Values below zero will cause the interface to fit to 1/2 total display height.
     Default: 1000
+    Note: Values below zero will cause the interface to fit to 1/2 total display height.
 
 interfaceWidth: int
     Set number of pixels for GUI width.
@@ -81,14 +81,14 @@ profileMode: bool
 
 seed: int
     Set the seed value for the random number generator.
+    Default: -1
     Note: Value of -1 causes simulation to generate a random seed.
     Note: Reusing a seed ensures deterministic simulation outcomes.
-    Default: -1
 
 timesteps: int
     Set the number of timesteps the simulation runs.
-    Note: Value of -1 causes simulation to run forever or until there are no more living agents.
     Default: 200
+    Note: Value of -1 causes simulation to run forever or until there are no more living agents.
 
 Other JSON Configurable Options:
 jobUpdateFrequency: int
@@ -108,6 +108,10 @@ plots: [string, ...]
     Options:
     Default: []
 
+plotIncrement: float
+    Set the value by which the generated plots index across the sweep parameter values.
+    Default: 0.1
+
 plotStatistic: string
     Set the statistic to use for plotting.
     Options: "mean", "median"
@@ -115,18 +119,18 @@ plotStatistic: string
 
 plotTimesteps: int
     Set the number of timesteps to plot in graphs as the X axis.
-    Note: This option does not control how many timesteps the simulation runs.
     Default: 1000
+    Note: This option does not control how many timesteps the simulation runs.
 
 pythonAlias: string
     Set the alias to the local Python 3 installation.
-    Note: Python 3 is required to run the simulation.
     Default: "python"
+    Note: Python 3 is required to run the simulation.
 
 sweepIncrement: float
     Set the value by which the sweep parameter is incremented.
+    Default: 0.01
     Note: If not provided, the decimals provided in the sweep parameter range are used to calculate the increment.
-    Default: 0.1
 
 sweepParamenter: string
     Set the parameter for performing a parameter sweep during data collection.
@@ -136,3 +140,8 @@ sweepParamenter: string
 sweepRange: [float, float]
     Set the minimum and maximum values for the parameter sweep.
     Default: [0.2, 0.7]
+
+thresholdSearchDirection: string
+    Set the direction to search for the first or last instance of a sweep parameter value which meets or exceeds the adoption threshold.
+    Options: "highest", "lowest"
+    Default: "highest"
