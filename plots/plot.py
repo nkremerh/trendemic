@@ -10,20 +10,20 @@ import sys
 
 def findMeans(dataset):
     print(f"Finding mean values across {totalTimesteps} timesteps")
-    for sweepValue in dataset:
-        for column in dataset[sweepValue]["metrics"]:
-            for i in range(len(dataset[sweepValue]["metrics"][column])):
-                if column not in dataset[sweepValue]["aggregates"]:
-                    dataset[sweepValue]["aggregates"][column] = [0 for j in range(totalTimesteps + 1)]
-                dataset[sweepValue]["aggregates"][column][i] = dataset[sweepValue]["metrics"][column][i] / dataset[sweepValue]["runs"]
+    for sweepKey in dataset:
+        for column in dataset[sweepKey]["metrics"]:
+            for i in range(len(dataset[sweepKey]["metrics"][column])):
+                if column not in dataset[sweepKey]["aggregates"]:
+                    dataset[sweepKey]["aggregates"][column] = [0 for j in range(totalTimesteps + 1)]
+                dataset[sweepKey]["aggregates"][column][i] = dataset[sweepKey]["metrics"][column][i] / dataset[sweepKey]["runs"]
     return dataset
 
 def findMedians(dataset):
     print(f"Finding median values across {totalTimesteps} timesteps")
-    for sweepValue in dataset:
-        for column in dataset[sweepValue]["metrics"]:
-            for i in range(len(dataset[sweepValue]["metrics"][column])):
-                sortedColumn = sorted(dataset[sweepValue]["metrics"][column][i])
+    for sweepKey in dataset:
+        for column in dataset[sweepKey]["metrics"]:
+            for i in range(len(dataset[sweepKey]["metrics"][column])):
+                sortedColumn = sorted(dataset[sweepKey]["metrics"][column][i])
                 columnLength = len(sortedColumn)
                 midpoint = math.floor(columnLength / 2)
                 median = sortedColumn[midpoint]
@@ -34,148 +34,92 @@ def findMedians(dataset):
                     median = round((sortedColumn[midpoint - 1] + median) / 2, 2)
                     firstQuartile = round((sortedColumn[quartile - 1] + firstQuartile) / 2, 2)
                     thirdQuartile = round((sortedColumn[(midpoint + quartile) - 1] + thirdQuartile) / 2, 2)
-                if column not in dataset[sweepValue]["aggregates"]:
-                    dataset[sweepValue]["aggregates"][column] = [0 for j in range(totalTimesteps + 1)]
-                    dataset[sweepValue]["firstQuartiles"][column] = [0 for j in range(totalTimesteps + 1)]
-                    dataset[sweepValue]["thirdQuartiles"][column] = [0 for j in range(totalTimesteps + 1)]
-                dataset[sweepValue]["aggregates"][column][i] = median
+                if column not in dataset[sweepKey]["aggregates"]:
+                    dataset[sweepKey]["aggregates"][column] = [0 for j in range(totalTimesteps + 1)]
+                    dataset[sweepKey]["firstQuartiles"][column] = [0 for j in range(totalTimesteps + 1)]
+                    dataset[sweepKey]["thirdQuartiles"][column] = [0 for j in range(totalTimesteps + 1)]
+                dataset[sweepKey]["aggregates"][column][i] = median
     return dataset
+
+def findNumberOfDecimals(number):
+    decimalCount = 0
+    decimals = str(number).split('.')
+    if len(decimals) == 2:
+        decimalCount = len(decimals[1])
+    return decimalCount
 
 def generatePlots(config, sweepParameter, totalTimesteps, dataset, statistic):
     titleStatistic = statistic.title()
+    plotIncrement = config["plotIncrement"] if "plotIncrement" in config else None
     if "adoption" in config["plots"]:
         print(f"Generating {statistic} adoption plot")
-        generateSimpleLinePlot(sweepParameter, dataset, totalTimesteps, f"{statistic}_adoption.pdf", "influenced", f"{titleStatistic} Adoption", "center right", True, config)
+        generateSimpleLinePlot(sweepParameter, dataset, totalTimesteps, f"{statistic}_adoption.pdf", "influenced", f"{titleStatistic} Adoption", "center right", plotIncrement, True)
 
-def generateSimpleLinePlot(sweepParameterName, datasetValues, totalTimestepsCount, outputFile, targetColumn, axisLabel, legendPosition, usePercentage = False, configuration = None):
+def generateSimpleLinePlot(sweepParameter, dataset, totalTimesteps, outfile, column, label, positioning, plotIncrement=None, percentage=False):
     matplotlib.pyplot.rcParams["font.family"] = "serif"
     matplotlib.pyplot.rcParams["font.size"] = 18
     figure, axes = matplotlib.pyplot.subplots()
-    axes.set(xlabel = "Timestep", ylabel = axisLabel, xlim = [0, totalTimestepsCount])
-    xAxisValues = [i for i in range(totalTimestepsCount + 1)]
-    colorPalette = ["magenta", "cyan", "yellow", "black", "red", "green", "blue", "purple", "gray", "brown", "pink"]
-    plotIncrement = configuration["plotIncrement"]
-
-    sortableSweepItems = []
-    for sweepKey in datasetValues.keys():
-        try:
-            numericValue = float(sweepKey)
-            sortableSweepItems.append((0, numericValue, sweepKey))
-        except Exception:
-            sortableSweepItems.append((1, float("inf"), sweepKey))
-    sortableSweepItems.sort()
-
-    baseValue = None
-    for flag, numericValue, sweepKey in sortableSweepItems:
-        if flag == 0:
-            baseValue = numericValue
-            break
-
-    tolerance = 1e-9
+    axes.set(xlabel="Timestep", ylabel=label, xlim=[0, totalTimesteps])
+    x = [i for i in range(totalTimesteps + 1)]
     colorIndex = 0
-    for flag, numericValue, sweepKey in sortableSweepItems:
-        if flag == 0 and baseValue is not None:
-            estimatedSteps = (numericValue - baseValue) / plotIncrement
-            integerSteps = int(round(estimatedSteps))
-            snappedValue = baseValue + integerSteps * plotIncrement
-            if abs(snappedValue - numericValue) > tolerance:
-                continue
-        if usePercentage:
-            percentageDenominator = datasetValues[sweepKey]["aggregates"]["agents"][0] / 100.0
-        else:
-            percentageDenominator = 1.0
-        sweepValueLabel = f"{sweepKey} {sweepParameterName}"
-        yAxisValues = [datasetValues[sweepKey]["aggregates"][targetColumn][i] / percentageDenominator for i in range(totalTimestepsCount + 1)]
-        axes.plot(xAxisValues, yAxisValues, color = colorPalette[colorIndex % len(colorPalette)], label = sweepValueLabel)
-        colorIndex += 1
+    colorPalette = ["magenta", "cyan", "yellow", "black", "red", "green", "blue", "purple", "gray", "brown", "pink"]
+    percentageDenominator = 1
 
-    if usePercentage:
+    for sweepKey, dictValue in sorted(dataset.items()):
+        if findNumberOfDecimals(sweepKey) == findNumberOfDecimals(plotIncrement):
+            if percentage == True:
+                percentageDenominator = dataset[sweepKey]["aggregates"]["agents"][0] / 100
+            sweepKeyLabel = f"{sweepKey} {sweepParameter}"
+            y = [dataset[sweepKey]["aggregates"][column][i] / percentageDenominator for i in range(totalTimesteps + 1)]
+            axes.plot(x, y, color=colorPalette[colorIndex % len(colorPalette)], label=sweepKeyLabel)
+            colorIndex += 1
+
+    if percentage == True:
         axes.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter())
-    axes.legend(loc = legendPosition, labelspacing = 0.1, frameon = False, fontsize = 16)
-    figure.savefig(outputFile, format = "pdf", bbox_inches = "tight")
+    axes.legend(loc=positioning, labelspacing=0.1, frameon=False, fontsize=16)
+    figure.savefig(outfile, format="pdf", bbox_inches="tight")
 
-def generateSummaryTable(datasetValues, sweepParameterName, totalTimestepsCount, adoptionThreshold, outputPath, searchDirectionSetting):
+def generateSummaryTable(sweepParameter, totalTimesteps, adoptionThreshold, searchDirection, dataset):
     sweepRows = []
-    for sweepKey in datasetValues.keys():
-        agentsSeries = datasetValues[sweepKey]["aggregates"]["agents"]
-        influencedSeries = datasetValues[sweepKey]["aggregates"]["influenced"]
-        if not agentsSeries or not influencedSeries:
-            finalAdoptionFraction = 0.0
-        else:
-            timestepIndex = min(totalTimestepsCount, len(agentsSeries) - 1, len(influencedSeries) - 1)
-            agentsFinal = agentsSeries[timestepIndex]
-            influencedFinal = influencedSeries[timestepIndex]
-            finalAdoptionFraction = 0.0 if agentsFinal == 0 else float(influencedFinal) / float(agentsFinal)
-        try:
-            numericValue = float(sweepKey)
-            sweepRows.append((0, numericValue, sweepKey, finalAdoptionFraction))
-        except Exception:
-            sweepRows.append((1, float("inf"), sweepKey, finalAdoptionFraction))
+    finalAdoptionFraction = 0
+    for sweepKey in dataset:
+        agents = dataset[sweepKey]["aggregates"]["agents"][-1]
+        influenced = dataset[sweepKey]["aggregates"]["influenced"][-1]
+        if influenced > 0:
+            finalAdoptionFraction = agents / influenced
+            sweepRows.append((sweepKey, finalAdoptionFraction))
     sweepRows.sort()
 
     selectedSweepKey = None
-    if searchDirectionSetting == "highest":
-        for flag, numericValue, sweepKey, adoptionFraction in reversed(sweepRows):
+    if searchDirection == "highest":
+        for sweepKey, adoptionFraction in reversed(sweepRows):
             if adoptionFraction >= adoptionThreshold:
                 selectedSweepKey = sweepKey
                 break
     else:
-        for flag, numericValue, sweepKey, adoptionFraction in sweepRows:
+        for sweepKey, adoptionFraction in sweepRows:
             if adoptionFraction >= adoptionThreshold:
                 selectedSweepKey = sweepKey
                 break
 
-    if selectedSweepKey is None:
-        print("No sweep value reached the adoptionThreshold.")
-        return
+    if selectedSweepKey != None:
+        adoptionRates = dataset[selectedSweepKey]["aggregates"]["adoptionRate"]
+        meanDegreesNewlyInfluenced = dataset[selectedSweepKey]["aggregates"]["meanDegreeNewlyInfluenced"]
+        meanDegreeAtPeak = 0
+        peakAdoptionRate = 0
+        timestepAtPeak = 0
 
-    adoptionRateSeries = datasetValues[selectedSweepKey]["aggregates"].get("adoptionRate", [])
-    meanDegreeNewlyInfluencedSeries = datasetValues[selectedSweepKey]["aggregates"].get("meanDegreeNewlyInfluenced", [])
+        timestep = 0
+        for adoptionRate in adoptionRates:
+            if adoptionRate > peakAdoptionRate:
+                peakAdoptionRate = adoptionRate
+                timestepAtPeak = timestep
+                meanDegreeAtPeak = meanDegreesNewlyInfluenced[timestepAtPeak]
+            timestep += 1
 
-    peakAdoptionRate = 0.0
-    timestepAtPeakAdoption = 0
-    for timestepIndex, adoptionValue in enumerate(adoptionRateSeries):
-        if adoptionValue > peakAdoptionRate:
-            peakAdoptionRate = adoptionValue
-            timestepAtPeakAdoption = timestepIndex
-
-    meanDegreeAtPeak = 0.0
-    if meanDegreeNewlyInfluencedSeries and timestepAtPeakAdoption < len(meanDegreeNewlyInfluencedSeries):
-        meanDegreeAtPeak = meanDegreeNewlyInfluencedSeries[timestepAtPeakAdoption]
-
-    print("")
-    print("=== One-row Summary ===")
-    print("sweepParameter = {0}".format(sweepParameterName))
-    print("tippingPoint = {0}".format(selectedSweepKey))
-    print("peakAdoptionRate = {0:.2f}".format(peakAdoptionRate))
-    print("timestepPeakAdoptionRate = {0}".format(timestepAtPeakAdoption))
-    print("meanDegreeNewlyInfluencedPeak = {0:.2f}".format(meanDegreeAtPeak))
-
-    summaryPdfPath = os.path.join(os.path.dirname(__file__), "summary.pdf")
-    matplotlib.pyplot.rcParams["font.family"] = "serif"
-    matplotlib.pyplot.rcParams["font.size"] = 14
-    figure, axes = matplotlib.pyplot.subplots(figsize = (8.5, 2.2))
-    axes.axis("off")
-    summaryTableData = [
-        ["sweepParameter", sweepParameterName],
-        ["tippingPoint", str(selectedSweepKey)],
-        ["peakAdoptionRate", "{0:.2f}".format(peakAdoptionRate)],
-        ["timestepPeakAdoptionRate", str(timestepAtPeakAdoption)],
-        ["meanDegreeNewlyInfluencedPeak", "{0:.2f}".format(meanDegreeAtPeak)]
-    ]
-    columnLabels = ["Metric", "Value"]
-    summaryTable = axes.table(cellText = summaryTableData, colLabels = columnLabels, loc = "center")
-
-    for tableCell in summaryTable.get_celld().values():
-        tableCell.set_text_props(ha = "center", va = "center")
-
-    summaryTable.auto_set_font_size(False)
-    summaryTable.set_fontsize(12)
-    summaryTable.scale(1.1, 1.4)
-    figure.tight_layout()
-    figure.savefig(summaryPdfPath, format = "pdf", bbox_inches = "tight")
-    matplotlib.pyplot.close(figure)
-    print("Summary PDF written to {0}".format(summaryPdfPath))
+        print(f"\n=== Summary Statistics ===\nSweep Parameter = {sweepParameter}\nTipping Point = {selectedSweepKey}\nPeak Adoption Rate = {peakAdoptionRate}\nTimestep at Peak Adoption Rate = {timestepAtPeak:.2f}\nMean Degree for Newly Influenced Agents at Peak Adoption Rate = {meanDegreeAtPeak:.2f}")
+    else:
+        print("No sweep value reached the adoption threshold.")
 
 def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
     encodedDir = os.fsencode(path)
@@ -188,9 +132,9 @@ def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
         fileSearch = re.search(fileDecisionModel, filename)
         if fileSearch == None:
             continue
-        sweepValue = fileSearch.group(1)
-        if sweepValue not in dataset:
-            dataset[sweepValue] = {"runs": 0, "timesteps": 0, "aggregates": {}, "firstQuartiles": {}, "thirdQuartiles": {}, "metrics": {}}
+        sweepKey = fileSearch.group(1)
+        if sweepKey not in dataset:
+            dataset[sweepKey] = {"runs": 0, "timesteps": 0, "aggregates": {}, "firstQuartiles": {}, "thirdQuartiles": {}, "metrics": {}}
         seed = fileSearch.group(2)
         log = open(filePath)
         print(f"Reading log {filePath}")
@@ -200,30 +144,30 @@ def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
         else:
             rawData = list(csv.DictReader(log))
 
-        dataset[sweepValue]["runs"] += 1
+        dataset[sweepKey]["runs"] += 1
         i = 1
         for item in rawData:
             if int(item["timestep"]) > totalTimesteps:
                 break
-            if int(item["timestep"]) > dataset[sweepValue]["timesteps"]:
-                dataset[sweepValue]["timesteps"] += 1
+            if int(item["timestep"]) > dataset[sweepKey]["timesteps"]:
+                dataset[sweepKey]["timesteps"] += 1
 
             for entry in item:
-                if entry not in dataset[sweepValue]["metrics"]:
+                if entry not in dataset[sweepKey]["metrics"]:
                     if statistic == "mean":
-                        dataset[sweepValue]["metrics"][entry] = [0 for j in range(totalTimesteps + 1)]
+                        dataset[sweepKey]["metrics"][entry] = [0 for j in range(totalTimesteps + 1)]
                     elif statistic == "median":
-                        dataset[sweepValue]["metrics"][entry] = [[] for j in range(totalTimesteps + 1)]
+                        dataset[sweepKey]["metrics"][entry] = [[] for j in range(totalTimesteps + 1)]
                 if item[entry] == "None":
                     item[entry] = 0
                 if statistic == "mean":
-                    dataset[sweepValue]["metrics"][entry][i-1] += float(item[entry])
+                    dataset[sweepKey]["metrics"][entry][i-1] += float(item[entry])
                 elif statistic == "median":
-                    dataset[sweepValue]["metrics"][entry][i-1].append(float(item[entry]))
+                    dataset[sweepKey]["metrics"][entry][i-1].append(float(item[entry]))
             i += 1
-    for sweepValue in dataset:
-        if dataset[sweepValue]["runs"] == 0:
-            print(f"No simulation runs found for the {sweepValue} sweep value.")
+    for sweepKey in dataset:
+        if dataset[sweepKey]["runs"] == 0:
+            print(f"No simulation runs found for the {sweepKey} sweep value.")
     return dataset
 
 def parseOptions():
@@ -274,7 +218,11 @@ if __name__ == "__main__":
     configFile.close()
     dataConfig = config["dataCollectionOptions"]
     trendemicConfig = config["trendemicOptions"]
+    adoptionThreshold = trendemicConfig["adoptionThreshold"]
     totalTimesteps = dataConfig["plotTimesteps"]
+    searchDirection = "lowest"
+    if "thresholdSearchDirection" in dataConfig:
+        searchDirection = dataConfig["thresholdSearchDirection"]
     statistic = dataConfig["plotStatistic"]
     sweepParameter = dataConfig["sweepParameter"]
     dataset = {}
@@ -293,7 +241,5 @@ if __name__ == "__main__":
         printHelp()
 
     generatePlots(dataConfig, sweepParameter, totalTimesteps, dataset, statistic)
-    adoption_threshold = trendemicConfig["adoptionThreshold"]
-    search_direction = dataConfig.get("thresholdSearchDirection", "lowest")
-    generateSummaryTable(dataset, sweepParameter, totalTimesteps, adoption_threshold, path, search_direction)
+    generateSummaryTable(sweepParameter, totalTimesteps, adoptionThreshold, searchDirection, dataset)
     exit(0)
