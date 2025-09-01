@@ -123,10 +123,12 @@ def generateSummaryTable(sweepParameter, totalTimesteps, adoptionThreshold, sear
 
 def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
     encodedDir = os.fsencode(path)
-    for file in os.listdir(encodedDir):
+    fileCount = 1
+    files = [f for f in os.listdir(encodedDir) if os.fsdecode(f).endswith("json") or os.fsdecode(f).endswith(".csv")]
+    printFileLength = len(max(files, key=len))
+    totalFiles = len(files)
+    for file in files:
         filename = os.fsdecode(file)
-        if not (filename.endswith(".json") or filename.endswith(".csv")):
-            continue
         filePath = path + filename
         fileDecisionModel = re.compile(r"^(.+)-(\d+)\.(json|csv)")
         fileSearch = re.search(fileDecisionModel, filename)
@@ -137,7 +139,8 @@ def parseDataset(path, dataset, totalTimesteps, statistic, skipExtinct=False):
             dataset[sweepKey] = {"runs": 0, "timesteps": 0, "aggregates": {}, "firstQuartiles": {}, "thirdQuartiles": {}, "metrics": {}}
         seed = fileSearch.group(2)
         log = open(filePath)
-        print(f"Reading log {filePath}")
+        printProgress(filename, fileCount, totalFiles, printFileLength)
+        fileCount += 1
         rawData = None
         if filename.endswith(".json"):
             rawData = json.loads(log.read())
@@ -207,6 +210,17 @@ def parseOptions():
 def printHelp():
     print("Usage:\n\tpython plot.py --path /path/to/data --conf /path/to/config > results.dat\n\nOptions:\n\t-c,--conf\tUse the specified path to configurable settings file.\n\t-p,--path\tUse the specified path to find dataset JSON files.\n\t-h,--help\tDisplay this message.")
     exit(0)
+
+def printProgress(filename, filesParsed, totalFiles, fileLength, decimals=2):
+    barLength = os.get_terminal_size().columns // 2
+    progress = round(((filesParsed / totalFiles) * 100), decimals)
+    filledLength = (barLength * filesParsed) // totalFiles
+    bar = '█' * filledLength + '-' * (barLength - filledLength)
+    printString = f"\rParsing {filename:>{fileLength}}: |{bar}| {filesParsed} / {totalFiles} ({progress}%)"
+    if filesParsed == totalFiles:
+        print(f"\r{' ' * os.get_terminal_size().columns}", end='\r')
+    else:
+        print(f"\r{printString}", end='\r')
 
 if __name__ == "__main__":
     options = parseOptions()
