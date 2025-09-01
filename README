@@ -91,10 +91,6 @@ timesteps: int
     Note: Value of -1 causes simulation to run forever or until there are no more living agents.
 
 Other JSON Configurable Options:
-jobUpdateFrequency: int
-    Set the frequency at which the number of remaining jobs is reported.
-    Default: 5
-
 numParallelSimJobs: int
     Set the number of simulations to run in parallel during data collection.
     Default: 1
